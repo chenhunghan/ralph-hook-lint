@@ -1,0 +1,13 @@
+[package]
+name = "lint"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3       # Optimize for speed
+lto = true          # Link-time optimization
+codegen-units = 1   # Better optimization
+panic = "abort"     # Remove unwinding code
+strip = true        # Strip symbols
