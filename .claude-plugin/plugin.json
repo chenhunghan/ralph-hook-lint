@@ -1,7 +1,7 @@
 {
   "name": "ralph-hook-lint",
   "description": "Zero dependencies lighting fast universal lint hook for you agent loops",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": {
     "name": "Hung-Han Chen",
     "email": "chenhungh@gmail.com"

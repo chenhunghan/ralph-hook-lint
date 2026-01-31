@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.2.1...ralph-hook-lint-v0.3.0) (2026-01-31)
+
+
+### Features
+
+* support rust/clippy ([50281f9](https://github.com/chenhunghan/ralph-hook-lint/commit/50281f9c4bc264fde82dad7aaf0dd2d07b26a66d))
+
+
+### Bug Fixes
+
+* add execute permission to setup.sh ([65a190f](https://github.com/chenhunghan/ralph-hook-lint/commit/65a190f69cab3abc26b2e657d9cea867a34e7e23))
+* **doc:** fix plugin instaltion cmd ([fb0b564](https://github.com/chenhunghan/ralph-hook-lint/commit/fb0b5643218200f9382ad92bad7627946823f856))
+* fix format ([d5b10c8](https://github.com/chenhunghan/ralph-hook-lint/commit/d5b10c8e1d5847f24862e9e4c3904270d3e6b55b))
+* remove matcher ([c540728](https://github.com/chenhunghan/ralph-hook-lint/commit/c540728864234c177abb98431f0f2c2698000cb0))
+
 ## [0.2.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.2.0...ralph-hook-lint-v0.2.1) (2026-01-31)
 
 
