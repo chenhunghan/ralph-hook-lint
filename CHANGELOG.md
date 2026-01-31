@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.2.0...ralph-hook-lint-v0.2.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* set up ci ([f61ac46](https://github.com/chenhunghan/ralph-hook-lint/commit/f61ac469d4a93e37a2b98f68f472bcd7c87f8977))
+
 ## [0.2.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.1.0...ralph-hook-lint-v0.2.0) (2026-01-31)
 
 
