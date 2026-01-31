@@ -54,13 +54,13 @@ fn no_package_json_skips() {
 }
 
 #[test]
-fn non_js_ts_file_skips() {
-    let input = r#"{"tool_input":{"file_path":"/some/path/file.rs"}}"#;
+fn unsupported_file_type_skips() {
+    let input = r#"{"tool_input":{"file_path":"/some/path/file.py"}}"#;
     let output = run_binary(input);
 
     assert!(
-        output.contains("not a JS/TS file"),
-        "Expected JS/TS skip message, got: {output}"
+        output.contains("unsupported file type") || output.contains("Skipping lint"),
+        "Expected skip message for unsupported file, got: {output}"
     );
 }
 
@@ -116,5 +116,70 @@ fn nested_projects_finds_closest_package_json() {
     assert!(
         prefix.trim().ends_with("subproject"),
         "npm prefix should find subproject (closest), got: {prefix}"
+    );
+}
+
+#[test]
+fn rust_project_finds_cargo_toml() {
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rust/project");
+
+    let file_path = fixture_dir.join("src/main.rs");
+    let input = format!(
+        r#"{{"tool_input":{{"file_path":"{}"}}}}"#,
+        file_path.display()
+    );
+
+    let output = run_binary(&input);
+
+    // Should find Cargo.toml and run clippy (or report lint passed/errors)
+    assert!(
+        output.contains("clippy")
+            || output.contains("Lint passed")
+            || output.contains("Lint errors"),
+        "Expected clippy to run for Rust project, got: {output}"
+    );
+}
+
+#[test]
+fn rust_monorepo_finds_crate_cargo_toml() {
+    // Structure:
+    // monorepo/
+    //   Cargo.toml           <- workspace root
+    //   crates/
+    //     app/
+    //       Cargo.toml       <- crate (should be found)
+    //       src/
+    //         lib.rs         <- file being linted
+
+    let fixture_dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rust/monorepo/crates/app");
+
+    let file_path = fixture_dir.join("src/lib.rs");
+    let input = format!(
+        r#"{{"tool_input":{{"file_path":"{}"}}}}"#,
+        file_path.display()
+    );
+
+    let output = run_binary(&input);
+
+    // Should find Cargo.toml and run clippy
+    assert!(
+        output.contains("clippy")
+            || output.contains("Lint passed")
+            || output.contains("Lint errors"),
+        "Expected clippy to run for Rust monorepo crate, got: {output}"
+    );
+}
+
+#[test]
+fn rust_file_no_cargo_toml_skips() {
+    let input = r#"{"tool_input":{"file_path":"/tmp/no-cargo/file.rs"}}"#;
+    let output = run_binary(input);
+
+    assert!(
+        output.contains("unsupported file type")
+            || output.contains("no project found")
+            || output.contains("Skipping lint"),
+        "Expected skip message for Rust file without Cargo.toml, got: {output}"
     );
 }

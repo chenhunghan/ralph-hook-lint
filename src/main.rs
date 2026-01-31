@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::Command;
 
 use extract::extract_file_path;
-use project::find_project_root;
+use project::{Lang, find_project_root};
 
 fn main() {
     // Handle --version flag
@@ -45,24 +45,21 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
             ),
         };
 
-    // Skip non-JS/TS files
-    if !is_js_ts_file(&file_path) {
-        return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"Skipping lint: {} is not a JS/TS file."}}"#,
-            escape_json(&file_path)
-        ));
-    }
-
-    // Find the nearest project root
+    // Find the nearest project root (also validates file type)
     let Some(project) = find_project_root(&file_path) else {
         return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"Skipping lint: no package.json found for {}."}}"#,
+            r#"{{"continue":true,"systemMessage":"Skipping lint: unsupported file type or no project found for {}."}}"#,
             escape_json(&file_path)
         ));
     };
 
-    let package_dir = project.root;
+    match project.lang {
+        Lang::JavaScript => run_js_lint(&file_path, &project.root),
+        Lang::Rust => run_rust_lint(&file_path, &project.root),
+    }
+}
 
+fn run_js_lint(file_path: &str, project_root: &str) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order: oxlint, biome, eslint
     let linters: &[(&str, &[&str])] = &[
         ("oxlint", &["{{file}}"]),
@@ -71,21 +68,21 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     ];
 
     for (linter, args) in linters {
-        let bin_path = format!("{package_dir}/node_modules/.bin/{linter}");
+        let bin_path = format!("{project_root}/node_modules/.bin/{linter}");
         if Path::new(&bin_path).exists() {
             let actual_args: Vec<String> = args
                 .iter()
-                .map(|a| a.replace("{{file}}", &file_path))
+                .map(|a| a.replace("{{file}}", file_path))
                 .collect();
 
             let output = Command::new(&bin_path)
                 .args(&actual_args)
-                .current_dir(&package_dir)
+                .current_dir(project_root)
                 .output()?;
 
             return Ok(output_lint_result(
                 linter,
-                &file_path,
+                file_path,
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
@@ -95,8 +92,8 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
 
     // Try npm run lint
     let npm_lint = Command::new("npm")
-        .args(["run", "lint", "--if-present", "--", &file_path])
-        .current_dir(&package_dir)
+        .args(["run", "lint", "--if-present", "--", file_path])
+        .current_dir(project_root)
         .output();
 
     if let Ok(output) = npm_lint {
@@ -106,7 +103,7 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         if !combined.contains("Missing script") && !combined.contains("npm error") {
             return Ok(output_lint_result(
                 "npm run lint",
-                &file_path,
+                file_path,
                 &stdout,
                 &stderr,
                 output.status.success(),
@@ -117,13 +114,54 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     // No linter found
     Ok(format!(
         r#"{{"continue":true,"systemMessage":"No linter found for {}."}}"#,
-        escape_json(&file_path)
+        escape_json(file_path)
     ))
 }
 
-fn is_js_ts_file(path: &str) -> bool {
-    let extensions = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
-    extensions.iter().any(|ext| path.ends_with(ext))
+fn run_rust_lint(
+    file_path: &str,
+    project_root: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Run clippy on the specific file
+    let output = Command::new("cargo")
+        .args(["clippy", "--message-format=short", "--", "-D", "warnings"])
+        .current_dir(project_root)
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Filter output to only show errors related to the specific file
+    let file_errors = filter_clippy_output(&stdout, &stderr, file_path);
+
+    if file_errors.is_empty() {
+        Ok(format!(
+            r#"{{"continue":true,"systemMessage":"Lint passed for {} using clippy."}}"#,
+            escape_json(file_path)
+        ))
+    } else {
+        Ok(format!(
+            r#"{{"decision":"block","reason":"Lint errors in {} using clippy:\n\n{}\n\nFix lint errors."}}"#,
+            escape_json(file_path),
+            escape_json(&file_errors)
+        ))
+    }
+}
+
+fn filter_clippy_output(stdout: &str, stderr: &str, file_path: &str) -> String {
+    let combined = format!("{stderr}\n{stdout}");
+    let file_name = Path::new(file_path)
+        .file_name()
+        .map_or(file_path, |n| n.to_str().unwrap_or(file_path));
+
+    combined
+        .lines()
+        .filter(|line| {
+            // Include lines that reference our file or are continuation/context lines
+            line.contains(file_path) || line.contains(file_name)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn escape_json(s: &str) -> String {
