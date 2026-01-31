@@ -1,6 +1,6 @@
+use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::io::Write;
 
 fn run_binary(input: &str) -> String {
     let binary = env!("CARGO_BIN_EXE_ralph-hook-lint");
@@ -24,8 +24,7 @@ fn run_binary(input: &str) -> String {
 
 #[test]
 fn finds_package_json_directory() {
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/ts/project");
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ts/project");
 
     // Create a nested file path
     let file_path = fixture_dir.join("src/index.ts");
@@ -39,8 +38,7 @@ fn finds_package_json_directory() {
     // Should skip because no linter is installed, but should find package.json
     assert!(
         output.contains("No linter found") || output.contains("Skipping lint"),
-        "Unexpected output: {}",
-        output
+        "Unexpected output: {output}"
     );
 }
 
@@ -51,8 +49,7 @@ fn no_package_json_skips() {
 
     assert!(
         output.contains("no package.json found") || output.contains("Skipping lint"),
-        "Expected skip message, got: {}",
-        output
+        "Expected skip message, got: {output}"
     );
 }
 
@@ -63,8 +60,7 @@ fn non_js_ts_file_skips() {
 
     assert!(
         output.contains("not a JS/TS file"),
-        "Expected JS/TS skip message, got: {}",
-        output
+        "Expected JS/TS skip message, got: {output}"
     );
 }
 
@@ -75,8 +71,7 @@ fn missing_file_path_skips() {
 
     assert!(
         output.contains("no file_path provided"),
-        "Expected no file_path message, got: {}",
-        output
+        "Expected no file_path message, got: {output}"
     );
 }
 
@@ -90,8 +85,8 @@ fn nested_projects_finds_closest_package_json() {
     //     src/
     //       index.ts         <- file being linted
 
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/ts/nested/subproject");
+    let fixture_dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ts/nested/subproject");
 
     let file_path = fixture_dir.join("src/index.ts");
     let input = format!(
@@ -107,21 +102,19 @@ fn nested_projects_finds_closest_package_json() {
             || output.contains("Lint passed")
             || output.contains("Lint errors")
             || output.contains("Skipping lint"),
-        "Expected to find closest package.json, got: {}",
-        output
+        "Expected to find closest package.json, got: {output}"
     );
 
     // Verify npm prefix finds the closest package.json (subproject, not nested)
     let npm_output = Command::new("npm")
         .arg("prefix")
-        .current_dir(&fixture_dir.join("src"))
+        .current_dir(fixture_dir.join("src"))
         .output()
         .expect("npm prefix failed");
 
     let prefix = String::from_utf8_lossy(&npm_output.stdout);
     assert!(
         prefix.trim().ends_with("subproject"),
-        "npm prefix should find subproject (closest), got: {}",
-        prefix
+        "npm prefix should find subproject (closest), got: {prefix}"
     );
 }

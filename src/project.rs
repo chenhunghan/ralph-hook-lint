@@ -6,7 +6,8 @@ use std::process::Command;
 pub struct ProjectInfo {
     /// Root directory of the project
     pub root: String,
-    /// Detected language/ecosystem
+    /// Detected language/ecosystem (reserved for future use)
+    #[allow(dead_code)]
     pub lang: Lang,
 }
 
@@ -22,8 +23,7 @@ pub enum Lang {
 pub fn find_project_root(file_path: &str) -> Option<ProjectInfo> {
     let file_dir = Path::new(file_path)
         .parent()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| ".".to_string());
+        .map_or_else(|| ".".to_string(), |p| p.to_string_lossy().to_string());
 
     // Try JavaScript/TypeScript (npm)
     if let Some(root) = find_npm_root(&file_dir) {
@@ -50,11 +50,7 @@ fn find_npm_root(dir: &str) -> Option<String> {
         .and_then(|o| {
             if o.status.success() {
                 let root = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                if !root.is_empty() {
-                    Some(root)
-                } else {
-                    None
-                }
+                if root.is_empty() { None } else { Some(root) }
             } else {
                 None
             }
@@ -67,8 +63,8 @@ mod tests {
 
     #[test]
     fn find_project_root_for_js_file() {
-        let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/ts/project");
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ts/project");
 
         // Use a file path in the same directory as package.json
         let file_path = fixture_dir.join("index.ts");
@@ -77,7 +73,11 @@ mod tests {
         assert!(result.is_some(), "Expected to find project root");
         let info = result.unwrap();
         assert_eq!(info.lang, Lang::JavaScript);
-        assert!(info.root.ends_with("project"), "Expected project, got: {}", info.root);
+        assert!(
+            info.root.ends_with("project"),
+            "Expected project, got: {}",
+            info.root
+        );
     }
 
     #[test]
@@ -91,7 +91,11 @@ mod tests {
         assert!(result.is_some());
         let info = result.unwrap();
         assert_eq!(info.lang, Lang::JavaScript);
-        assert!(info.root.ends_with("subproject"), "Expected subproject, got: {}", info.root);
+        assert!(
+            info.root.ends_with("subproject"),
+            "Expected subproject, got: {}",
+            info.root
+        );
     }
 
     #[test]

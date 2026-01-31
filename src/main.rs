@@ -2,6 +2,7 @@ mod extract;
 mod project;
 
 use std::env;
+use std::fmt::Write;
 use std::io::{self, Read};
 use std::path::Path;
 use std::process::Command;
@@ -19,8 +20,11 @@ fn main() {
 
     let result = run();
     match result {
-        Ok(output) => println!("{}", output),
-        Err(e) => println!(r#"{{"continue":true,"systemMessage":"Lint hook error: {}"}}"#, escape_json(&e.to_string())),
+        Ok(output) => println!("{output}"),
+        Err(e) => println!(
+            r#"{{"continue":true,"systemMessage":"Lint hook error: {}"}}"#,
+            escape_json(&e.to_string())
+        ),
     }
 }
 
@@ -32,10 +36,14 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     // Extract file_path from tool_input.file_path using simple string search
     let file_path = extract_file_path(&input);
 
-    let file_path = match file_path {
-        Some(fp) if !fp.is_empty() => fp,
-        _ => return Ok(r#"{"continue":true,"systemMessage":"no file_path provided, skipping lint hook."}"#.to_string()),
-    };
+    let file_path =
+        match file_path {
+            Some(fp) if !fp.is_empty() => fp,
+            _ => return Ok(
+                r#"{"continue":true,"systemMessage":"no file_path provided, skipping lint hook."}"#
+                    .to_string(),
+            ),
+        };
 
     // Skip non-JS/TS files
     if !is_js_ts_file(&file_path) {
@@ -46,14 +54,11 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     }
 
     // Find the nearest project root
-    let project = match find_project_root(&file_path) {
-        Some(p) => p,
-        None => {
-            return Ok(format!(
-                r#"{{"continue":true,"systemMessage":"Skipping lint: no package.json found for {}."}}"#,
-                escape_json(&file_path)
-            ));
-        }
+    let Some(project) = find_project_root(&file_path) else {
+        return Ok(format!(
+            r#"{{"continue":true,"systemMessage":"Skipping lint: no package.json found for {}."}}"#,
+            escape_json(&file_path)
+        ));
     };
 
     let package_dir = project.root;
@@ -66,7 +71,7 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     ];
 
     for (linter, args) in linters {
-        let bin_path = format!("{}/node_modules/.bin/{}", package_dir, linter);
+        let bin_path = format!("{package_dir}/node_modules/.bin/{linter}");
         if Path::new(&bin_path).exists() {
             let actual_args: Vec<String> = args
                 .iter()
@@ -95,17 +100,15 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         .output();
 
     if let Ok(output) = npm_lint {
-        let combined = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{stdout}{stderr}");
         if !combined.contains("Missing script") && !combined.contains("npm error") {
             return Ok(output_lint_result(
                 "npm run lint",
                 &file_path,
-                &String::from_utf8_lossy(&output.stdout),
-                &String::from_utf8_lossy(&output.stderr),
+                &stdout,
+                &stderr,
                 output.status.success(),
             ));
         }
@@ -128,12 +131,12 @@ fn escape_json(s: &str) -> String {
     for c in s.chars() {
         match c {
             '"' => result.push_str(r#"\""#),
-            '\\' => result.push_str(r#"\\"#),
-            '\n' => result.push_str(r#"\n"#),
-            '\r' => result.push_str(r#"\r"#),
-            '\t' => result.push_str(r#"\t"#),
+            '\\' => result.push_str(r"\\"),
+            '\n' => result.push_str(r"\n"),
+            '\r' => result.push_str(r"\r"),
+            '\t' => result.push_str(r"\t"),
             c if c.is_control() => {
-                result.push_str(&format!(r#"\u{:04x}"#, c as u32));
+                let _ = write!(result, r"\u{:04x}", c as u32);
             }
             c => result.push(c),
         }
@@ -141,7 +144,13 @@ fn escape_json(s: &str) -> String {
     result
 }
 
-fn output_lint_result(linter: &str, file_path: &str, stdout: &str, stderr: &str, success: bool) -> String {
+fn output_lint_result(
+    linter: &str,
+    file_path: &str,
+    stdout: &str,
+    stderr: &str,
+    success: bool,
+) -> String {
     if success {
         format!(
             r#"{{"continue":true,"systemMessage":"Lint passed for {} using {}."}}"#,
@@ -150,7 +159,7 @@ fn output_lint_result(linter: &str, file_path: &str, stdout: &str, stderr: &str,
         )
     } else {
         let output = if !stdout.is_empty() && !stderr.is_empty() {
-            format!("{}\n{}", stdout, stderr)
+            format!("{stdout}\n{stderr}")
         } else if !stdout.is_empty() {
             stdout.to_string()
         } else {

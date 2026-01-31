@@ -1,4 +1,4 @@
-/// Extract file_path from JSON like {"tool_input":{"file_path":"/some/path"}}
+/// Extract `file_path` from JSON like `{"tool_input":{"file_path":"/some/path"}}`
 pub fn extract_file_path(json: &str) -> Option<String> {
     let marker = r#""file_path":"#;
     let start = json.find(marker)? + marker.len();
@@ -54,31 +54,46 @@ mod tests {
     #[test]
     fn file_path_with_whitespace_after_colon() {
         let json = r#"{"file_path": "/path/to/file.js"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/to/file.js".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/to/file.js".to_string())
+        );
     }
 
     #[test]
     fn file_path_with_spaces_in_path() {
         let json = r#"{"file_path":"/path/with spaces/file.ts"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/with spaces/file.ts".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/with spaces/file.ts".to_string())
+        );
     }
 
     #[test]
     fn escaped_backslash_in_path() {
         let json = r#"{"file_path":"C:\\Users\\test\\file.ts"}"#;
-        assert_eq!(extract_file_path(json), Some("C:\\Users\\test\\file.ts".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("C:\\Users\\test\\file.ts".to_string())
+        );
     }
 
     #[test]
     fn escaped_quote_in_path() {
         let json = r#"{"file_path":"/path/with\"quote/file.ts"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/with\"quote/file.ts".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/with\"quote/file.ts".to_string())
+        );
     }
 
     #[test]
     fn escaped_newline_in_path() {
         let json = r#"{"file_path":"/path/with\nnewline"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/with\nnewline".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/with\nnewline".to_string())
+        );
     }
 
     #[test]
@@ -90,7 +105,10 @@ mod tests {
     #[test]
     fn escaped_forward_slash() {
         let json = r#"{"file_path":"\/path\/to\/file.ts"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/to/file.ts".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/to/file.ts".to_string())
+        );
     }
 
     #[test]
@@ -102,7 +120,7 @@ mod tests {
     #[test]
     fn empty_file_path() {
         let json = r#"{"file_path":""}"#;
-        assert_eq!(extract_file_path(json), Some("".to_string()));
+        assert_eq!(extract_file_path(json), Some(String::new()));
     }
 
     #[test]
@@ -126,18 +144,27 @@ mod tests {
     #[test]
     fn deeply_nested() {
         let json = r#"{"outer":{"inner":{"tool_input":{"file_path":"/nested/path.tsx"}}}}"#;
-        assert_eq!(extract_file_path(json), Some("/nested/path.tsx".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/nested/path.tsx".to_string())
+        );
     }
 
     #[test]
     fn real_world_hook_input() {
         let json = r#"{"tool_name":"Write","tool_input":{"file_path":"/Users/test/project/src/index.ts","content":"console.log('hello');"}}"#;
-        assert_eq!(extract_file_path(json), Some("/Users/test/project/src/index.ts".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/Users/test/project/src/index.ts".to_string())
+        );
     }
 
     #[test]
     fn unknown_escape_sequence() {
         let json = r#"{"file_path":"/path/with\xunknown"}"#;
-        assert_eq!(extract_file_path(json), Some("/path/with\\xunknown".to_string()));
+        assert_eq!(
+            extract_file_path(json),
+            Some("/path/with\\xunknown".to_string())
+        );
     }
 }
