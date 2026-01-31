@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.5.0...ralph-hook-lint-v0.6.0) (2026-01-31)
+
+
+### Features
+
+* add support for go ([b68bab6](https://github.com/chenhunghan/ralph-hook-lint/commit/b68bab63a14d0498de80e5d1dd9a32d14493ff23))
+
 ## [0.5.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.4.0...ralph-hook-lint-v0.5.0) (2026-01-31)
 
 
