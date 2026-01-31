@@ -15,5 +15,5 @@ Lints after every `Write`/`Edit` operation in Claude Code. If lint errors are fo
 
 ```bash
 claude plugin marketplace add chenhunghan/ralph-hook-lint
-claude plugin install chenhunghan/ralph-hook-lint
+claude plugin install ralph-hook-lint
 ```
