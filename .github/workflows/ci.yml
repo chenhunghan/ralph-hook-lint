@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # pull_request_target is needed for PRs created by release-please bot.
+  # GitHub Actions prevents workflows from triggering on PRs created with
+  # GITHUB_TOKEN to avoid recursive workflow runs. Since release-please
+  # uses GITHUB_TOKEN, its PRs won't trigger the `pull_request` event.
+  # pull_request_target runs in the base branch context but triggers for
+  # bot-created PRs. This is safe for release-please since it only updates
+  # version numbers and changelogs.
+  pull_request_target:
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
