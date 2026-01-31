@@ -2,7 +2,7 @@
 
 Zero dependencies lighting fast universal lint hook for your ~~Ralph Wiggum~~ agent loop.
 
-See format hook: [ralph-format-lint](https://github.com/chenhunghan/ralph-hook-lint)
+See also format hook: [ralph-hook-fmt](https://github.com/chenhunghan/ralph-hook-fmt)
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7c63516e-ed02-4d98-952d-a642215cb722" alt="Ralph Wiggum" />
