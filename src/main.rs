@@ -1,6 +1,7 @@
 mod extract;
 mod project;
 
+use std::env;
 use std::io::{self, Read};
 use std::path::Path;
 use std::process::Command;
@@ -9,6 +10,13 @@ use extract::extract_file_path;
 use project::find_project_root;
 
 fn main() {
+    // Handle --version flag
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && (args[1] == "--version" || args[1] == "-V") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     let result = run();
     match result {
         Ok(output) => println!("{}", output),

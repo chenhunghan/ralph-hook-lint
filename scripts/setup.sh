@@ -6,8 +6,39 @@ BIN_DIR="${PLUGIN_ROOT}/bin"
 BINARY_NAME="ralph-hook-lint"
 REPO="chenhunghan/ralph-hook-lint"
 
-# Skip if binary already exists
-if [[ -x "$BIN_DIR/$BINARY_NAME" ]]; then
+# Get latest version from GitHub API
+# Tag format is "ralph-hook-lint-v0.1.0", extract just the version part
+get_latest_version() {
+  curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | \
+    grep '"tag_name"' | sed -E 's/.*"tag_name": *"[^"]*-v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/'
+}
+
+# Get installed version from binary
+get_installed_version() {
+  if [[ -x "$BIN_DIR/$BINARY_NAME" ]]; then
+    "$BIN_DIR/$BINARY_NAME" --version 2>/dev/null || echo ""
+  else
+    echo ""
+  fi
+}
+
+INSTALLED_VERSION=$(get_installed_version)
+LATEST_VERSION=$(get_latest_version)
+
+# Skip if binary exists and is up to date
+if [[ -x "$BIN_DIR/$BINARY_NAME" ]] && [[ -n "$INSTALLED_VERSION" ]] && [[ -n "$LATEST_VERSION" ]]; then
+  # Normalize versions (remove 'v' prefix if present for comparison)
+  INSTALLED_NORMALIZED="${INSTALLED_VERSION#v}"
+  LATEST_NORMALIZED="${LATEST_VERSION#v}"
+
+  if [[ "$INSTALLED_NORMALIZED" == "$LATEST_NORMALIZED" ]]; then
+    exit 0
+  fi
+  echo "{\"continue\": true, \"systemMessage\": \"lint-hook: updating from $INSTALLED_VERSION to $LATEST_VERSION\"}"
+fi
+
+# Skip if we couldn't fetch the latest version (network issue) and binary exists
+if [[ -z "$LATEST_VERSION" ]] && [[ -x "$BIN_DIR/$BINARY_NAME" ]]; then
   exit 0
 fi
 
@@ -43,7 +74,7 @@ RELEASE_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}-
 cd "$BIN_DIR"
 if curl -fsSL "$RELEASE_URL" | tar xz 2>/dev/null; then
   chmod +x "$BIN_DIR/$BINARY_NAME"
-  echo '{"continue": true, "systemMessage": "lint-hook: binary installed successfully"}'
+  echo "{\"continue\": true, \"systemMessage\": \"lint-hook: binary installed ($LATEST_VERSION)\"}"
 else
   echo "{\"continue\": true, \"systemMessage\": \"lint-hook: failed to download binary from $RELEASE_URL\"}"
 fi
