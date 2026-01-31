@@ -24,3 +24,9 @@ Lints after every `Write`/`Edit` operation in Claude Code. If lint errors are fo
 claude plugin marketplace add chenhunghan/ralph-hook-lint
 claude plugin install ralph-hook-lint
 ```
+
+## Update
+
+```bash
+claude plugin update ralph-hook-lint@ralph-hook-lint
+```
