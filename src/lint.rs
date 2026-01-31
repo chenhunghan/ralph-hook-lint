@@ -239,7 +239,8 @@ mod tests {
 
     #[test]
     fn test_output_lint_result_escapes_special_chars() {
-        let result = output_lint_result("eslint", "src/app.js", "error: \"unexpected\"\n", "", false);
+        let result =
+            output_lint_result("eslint", "src/app.js", "error: \"unexpected\"\n", "", false);
         assert!(result.contains(r#"\"unexpected\""#));
         assert!(result.contains(r"\n"));
     }
