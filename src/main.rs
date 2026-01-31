@@ -1,6 +1,12 @@
+mod extract;
+mod project;
+
 use std::io::{self, Read};
 use std::path::Path;
 use std::process::Command;
+
+use extract::extract_file_path;
+use project::find_project_root;
 
 fn main() {
     let result = run();
@@ -31,34 +37,18 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         ));
     }
 
-    // Find the nearest package.json directory using npm prefix
-    let file_dir = Path::new(&file_path)
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| ".".to_string());
-
-    let package_dir = Command::new("npm")
-        .arg("prefix")
-        .current_dir(&file_dir)
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        });
-
-    let package_dir = match package_dir {
-        Some(dir) if !dir.is_empty() => dir,
-        _ => {
+    // Find the nearest project root
+    let project = match find_project_root(&file_path) {
+        Some(p) => p,
+        None => {
             return Ok(format!(
                 r#"{{"continue":true,"systemMessage":"Skipping lint: no package.json found for {}."}}"#,
                 escape_json(&file_path)
             ));
         }
     };
+
+    let package_dir = project.root;
 
     // Try linters in order: oxlint, biome, eslint
     let linters: &[(&str, &[&str])] = &[
@@ -118,49 +108,6 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         r#"{{"continue":true,"systemMessage":"No linter found for {}."}}"#,
         escape_json(&file_path)
     ))
-}
-
-/// Extract file_path from JSON like {"tool_input":{"file_path":"/some/path"}}
-fn extract_file_path(json: &str) -> Option<String> {
-    let marker = r#""file_path":"#;
-    let start = json.find(marker)? + marker.len();
-    let rest = &json[start..];
-
-    // Skip whitespace
-    let rest = rest.trim_start();
-
-    // Expect a quote
-    if !rest.starts_with('"') {
-        return None;
-    }
-
-    let rest = &rest[1..];
-    let mut result = String::new();
-    let mut chars = rest.chars();
-
-    while let Some(c) = chars.next() {
-        match c {
-            '"' => return Some(result),
-            '\\' => {
-                if let Some(escaped) = chars.next() {
-                    match escaped {
-                        'n' => result.push('\n'),
-                        'r' => result.push('\r'),
-                        't' => result.push('\t'),
-                        '\\' => result.push('\\'),
-                        '"' => result.push('"'),
-                        '/' => result.push('/'),
-                        _ => {
-                            result.push('\\');
-                            result.push(escaped);
-                        }
-                    }
-                }
-            }
-            _ => result.push(c),
-        }
-    }
-    None
 }
 
 fn is_js_ts_file(path: &str) -> bool {
