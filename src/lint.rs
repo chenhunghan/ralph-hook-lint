@@ -172,8 +172,16 @@ pub fn run_java_lint(
 
     // Linters to try in order: pmd (fast), spotbugs (thorough)
     let maven_linters: &[(&str, &[&str], &str)] = &[
-        ("pmd:check", &["pmd:check", "-q"], "No plugin found for prefix 'pmd'"),
-        ("spotbugs:check", &["spotbugs:check", "-q"], "No plugin found for prefix 'spotbugs'"),
+        (
+            "pmd:check",
+            &["pmd:check", "-q"],
+            "No plugin found for prefix 'pmd'",
+        ),
+        (
+            "spotbugs:check",
+            &["spotbugs:check", "-q"],
+            "No plugin found for prefix 'spotbugs'",
+        ),
     ];
 
     let gradle_linters: &[(&str, &str)] = &[
