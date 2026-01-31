@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.4.0...ralph-hook-lint-v0.5.0) (2026-01-31)
+
+
+### Features
+
+* support java linters ([b4b9200](https://github.com/chenhunghan/ralph-hook-lint/commit/b4b92009148e9baee612ae630e14b6255877fa0e))
+
+
+### Bug Fixes
+
+* fix format ([2a03bb7](https://github.com/chenhunghan/ralph-hook-lint/commit/2a03bb70892c801e385043c17d65102cfd57a759))
+
 ## [0.4.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.3.0...ralph-hook-lint-v0.4.0) (2026-01-31)
 
 
