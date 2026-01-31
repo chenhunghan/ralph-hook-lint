@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "lint"
+name = "ralph-hook-lint"
 version = "0.0.1"

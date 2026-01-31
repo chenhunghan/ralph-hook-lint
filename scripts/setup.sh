@@ -3,7 +3,7 @@ set -e
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$(dirname "$0")")}"
 BIN_DIR="${PLUGIN_ROOT}/bin"
-BINARY_NAME="lint"
+BINARY_NAME="ralph-hook-lint"
 REPO="chenhunghan/ralph-hook-lint"
 
 # Skip if binary already exists

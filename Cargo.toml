@@ -1,5 +1,5 @@
 [package]
-name = "lint"
+name = "ralph-hook-lint"
 version = "0.0.1"
 edition = "2024"
 
