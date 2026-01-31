@@ -262,6 +262,66 @@ pub fn run_java_lint(
     ))
 }
 
+pub fn run_go_lint(
+    file_path: &str,
+    project_root: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Try linters in order: golangci-lint (comprehensive), staticcheck, go vet
+    let linters: &[(&str, &[&str])] = &[
+        ("golangci-lint", &["run", "--fast", "{{file}}"]),
+        ("staticcheck", &["{{file}}"]),
+    ];
+
+    for (linter, args) in linters {
+        // Check if linter exists in PATH
+        if let Ok(output) = Command::new("which").arg(linter).output() {
+            if output.status.success() {
+                let actual_args: Vec<String> = args
+                    .iter()
+                    .map(|a| a.replace("{{file}}", file_path))
+                    .collect();
+
+                let output = Command::new(linter)
+                    .args(&actual_args)
+                    .current_dir(project_root)
+                    .output()?;
+
+                return Ok(output_lint_result(
+                    linter,
+                    file_path,
+                    &String::from_utf8_lossy(&output.stdout),
+                    &String::from_utf8_lossy(&output.stderr),
+                    output.status.success(),
+                ));
+            }
+        }
+    }
+
+    // Fallback to go vet (always available with Go installation)
+    if let Ok(output) = Command::new("which").arg("go").output() {
+        if output.status.success() {
+            let output = Command::new("go")
+                .args(["vet", file_path])
+                .current_dir(project_root)
+                .output()?;
+
+            return Ok(output_lint_result(
+                "go vet",
+                file_path,
+                &String::from_utf8_lossy(&output.stdout),
+                &String::from_utf8_lossy(&output.stderr),
+                output.status.success(),
+            ));
+        }
+    }
+
+    // No linter found
+    Ok(format!(
+        r#"{{"continue":true,"systemMessage":"No Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run"}}"#,
+        escape_json(file_path)
+    ))
+}
+
 fn filter_clippy_output(stdout: &str, stderr: &str, file_path: &str) -> String {
     let combined = format!("{stderr}\n{stdout}");
     let file_name = Path::new(file_path)

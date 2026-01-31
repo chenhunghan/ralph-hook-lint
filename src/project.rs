@@ -18,6 +18,7 @@ pub enum Lang {
     Rust,
     Python,
     Java,
+    Go,
 }
 
 /// Detect language from file extension
@@ -26,6 +27,7 @@ pub fn detect_lang(file_path: &str) -> Option<Lang> {
     let rust_extensions = [".rs"];
     let python_extensions = [".py", ".pyi"];
     let java_extensions = [".java"];
+    let go_extensions = [".go"];
 
     if js_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::JavaScript)
@@ -35,6 +37,8 @@ pub fn detect_lang(file_path: &str) -> Option<Lang> {
         Some(Lang::Python)
     } else if java_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::Java)
+    } else if go_extensions.iter().any(|ext| file_path.ends_with(ext)) {
+        Some(Lang::Go)
     } else {
         None
     }
@@ -53,6 +57,7 @@ pub fn find_project_root(file_path: &str) -> Option<ProjectInfo> {
         Lang::Rust => find_cargo_root(&file_dir).map(|root| ProjectInfo { root, lang }),
         Lang::Python => find_python_root(&file_dir).map(|root| ProjectInfo { root, lang }),
         Lang::Java => find_java_root(&file_dir).map(|root| ProjectInfo { root, lang }),
+        Lang::Go => find_go_root(&file_dir).map(|root| ProjectInfo { root, lang }),
     }
 }
 
@@ -115,6 +120,18 @@ fn find_java_root(dir: &str) -> Option<String> {
             if current.join(marker).exists() {
                 return Some(current.to_string_lossy().to_string());
             }
+        }
+        current = current.parent()?;
+    }
+}
+
+/// Find the nearest Go project root by walking up the directory tree
+/// Looks for go.mod
+fn find_go_root(dir: &str) -> Option<String> {
+    let mut current = Path::new(dir);
+    loop {
+        if current.join("go.mod").exists() {
+            return Some(current.to_string_lossy().to_string());
         }
         current = current.parent()?;
     }
@@ -226,8 +243,12 @@ mod tests {
     }
 
     #[test]
+    fn detect_lang_go() {
+        assert_eq!(detect_lang("/path/to/file.go"), Some(Lang::Go));
+    }
+
+    #[test]
     fn detect_lang_unsupported() {
-        assert_eq!(detect_lang("/path/to/file.go"), None);
         assert_eq!(detect_lang("/path/to/file.txt"), None);
         assert_eq!(detect_lang("/path/to/file.rb"), None);
     }
@@ -304,6 +325,43 @@ mod tests {
         let info = result.unwrap();
         assert_eq!(info.lang, Lang::Java);
         // Should find the module's pom.xml, not the monorepo root
+        assert!(
+            info.root.ends_with("app"),
+            "Expected app module, got: {}",
+            info.root
+        );
+    }
+
+    #[test]
+    fn find_project_root_for_go_file() {
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/go/project");
+
+        let file_path = fixture_dir.join("cmd/main.go");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some(), "Expected to find project root");
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Go);
+        assert!(
+            info.root.ends_with("project"),
+            "Expected project, got: {}",
+            info.root
+        );
+    }
+
+    #[test]
+    fn find_project_root_go_monorepo() {
+        let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/go/monorepo/modules/app");
+
+        let file_path = fixture_dir.join("pkg/lib.go");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Go);
+        // Should find the module's go.mod, not the monorepo root
         assert!(
             info.root.ends_with("app"),
             "Expected app module, got: {}",

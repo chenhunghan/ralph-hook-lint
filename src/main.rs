@@ -6,7 +6,7 @@ use std::env;
 use std::io::{self, Read};
 
 use extract::extract_file_path;
-use lint::{escape_json, run_java_lint, run_js_lint, run_python_lint, run_rust_lint};
+use lint::{escape_json, run_go_lint, run_java_lint, run_js_lint, run_python_lint, run_rust_lint};
 use project::{Lang, find_project_root};
 
 fn main() {
@@ -57,5 +57,6 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         Lang::Rust => run_rust_lint(&file_path, &project.root),
         Lang::Python => run_python_lint(&file_path, &project.root),
         Lang::Java => run_java_lint(&file_path, &project.root),
+        Lang::Go => run_go_lint(&file_path, &project.root),
     }
 }

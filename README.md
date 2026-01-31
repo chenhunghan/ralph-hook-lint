@@ -12,6 +12,7 @@ Lints after every `Write`/`Edit` operation in Claude Code. If lint errors are fo
 - **Rust**: `clippy`
 - **Python**: `ruff` > `mypy` > `pylint` > `flake8` (in order of preference)
 - **Java**: Maven (`pmd:check` > `spotbugs:check`) or Gradle (`pmdMain` > `spotbugsMain`)
+- **Go**: `golangci-lint` > `staticcheck` > `go vet` (in order of preference)
 
 ## Installation
 
