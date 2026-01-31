@@ -1,0 +1,12 @@
+{
+  "name": "ralph-hook-lint",
+  "description": "Zero dependencies lighting fast universal lint hook for you agent loops",
+  "version": "0.0.1",
+  "author": {
+    "name": "Hung-Han Chen",
+    "email": "chenhungh@gmail.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/chenhunghan/ralph-hook-lint",
+  "keywords": ["lint", "eslint", "oxlint", "biome", "hooks"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ralph-hook-lint",
+  "owner": {
+    "name": "Hung-Han Chen",
+    "email": "chenhungh@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "lint-hook",
+      "source": "."
+    }
+  ]
+}
