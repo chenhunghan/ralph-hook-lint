@@ -17,6 +17,7 @@ pub enum Lang {
     JavaScript,
     Rust,
     Python,
+    Java,
 }
 
 /// Detect language from file extension
@@ -24,6 +25,7 @@ pub fn detect_lang(file_path: &str) -> Option<Lang> {
     let js_extensions = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
     let rust_extensions = [".rs"];
     let python_extensions = [".py", ".pyi"];
+    let java_extensions = [".java"];
 
     if js_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::JavaScript)
@@ -31,6 +33,8 @@ pub fn detect_lang(file_path: &str) -> Option<Lang> {
         Some(Lang::Rust)
     } else if python_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::Python)
+    } else if java_extensions.iter().any(|ext| file_path.ends_with(ext)) {
+        Some(Lang::Java)
     } else {
         None
     }
@@ -48,6 +52,7 @@ pub fn find_project_root(file_path: &str) -> Option<ProjectInfo> {
         Lang::JavaScript => find_npm_root(&file_dir).map(|root| ProjectInfo { root, lang }),
         Lang::Rust => find_cargo_root(&file_dir).map(|root| ProjectInfo { root, lang }),
         Lang::Python => find_python_root(&file_dir).map(|root| ProjectInfo { root, lang }),
+        Lang::Java => find_java_root(&file_dir).map(|root| ProjectInfo { root, lang }),
     }
 }
 
@@ -89,6 +94,21 @@ fn find_python_root(dir: &str) -> Option<String> {
         "setup.cfg",
         "requirements.txt",
     ];
+    let mut current = Path::new(dir);
+    loop {
+        for marker in &markers {
+            if current.join(marker).exists() {
+                return Some(current.to_string_lossy().to_string());
+            }
+        }
+        current = current.parent()?;
+    }
+}
+
+/// Find the nearest Java project root by walking up the directory tree
+/// Looks for pom.xml, build.gradle, or build.gradle.kts
+fn find_java_root(dir: &str) -> Option<String> {
+    let markers = ["pom.xml", "build.gradle", "build.gradle.kts"];
     let mut current = Path::new(dir);
     loop {
         for marker in &markers {
@@ -245,6 +265,48 @@ mod tests {
         assert!(
             info.root.ends_with("app"),
             "Expected app package, got: {}",
+            info.root
+        );
+    }
+
+    #[test]
+    fn detect_lang_java() {
+        assert_eq!(detect_lang("/path/to/file.java"), Some(Lang::Java));
+    }
+
+    #[test]
+    fn find_project_root_for_java_file() {
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/java/project");
+
+        let file_path = fixture_dir.join("src/main/java/App.java");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some(), "Expected to find project root");
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Java);
+        assert!(
+            info.root.ends_with("project"),
+            "Expected project, got: {}",
+            info.root
+        );
+    }
+
+    #[test]
+    fn find_project_root_java_monorepo() {
+        let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/java/monorepo/modules/app");
+
+        let file_path = fixture_dir.join("src/main/java/Lib.java");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Java);
+        // Should find the module's pom.xml, not the monorepo root
+        assert!(
+            info.root.ends_with("app"),
+            "Expected app module, got: {}",
             info.root
         );
     }

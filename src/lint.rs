@@ -161,6 +161,99 @@ pub fn run_python_lint(
     ))
 }
 
+pub fn run_java_lint(
+    file_path: &str,
+    project_root: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Detect build tool: Maven or Gradle
+    let pom_path = Path::new(project_root).join("pom.xml");
+    let gradle_path = Path::new(project_root).join("build.gradle");
+    let gradle_kts_path = Path::new(project_root).join("build.gradle.kts");
+
+    // Linters to try in order: pmd (fast), spotbugs (thorough)
+    let maven_linters: &[(&str, &[&str], &str)] = &[
+        ("pmd:check", &["pmd:check", "-q"], "No plugin found for prefix 'pmd'"),
+        ("spotbugs:check", &["spotbugs:check", "-q"], "No plugin found for prefix 'spotbugs'"),
+    ];
+
+    let gradle_linters: &[(&str, &str)] = &[
+        ("pmdMain", "Task 'pmdMain' not found"),
+        ("spotbugsMain", "Task 'spotbugsMain' not found"),
+    ];
+
+    if pom_path.exists() {
+        for (name, args, not_found_msg) in maven_linters {
+            let output = Command::new("mvn")
+                .args(*args)
+                .current_dir(project_root)
+                .output()?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            // Check if plugin exists
+            if stderr.contains("Unknown lifecycle phase") || stderr.contains(not_found_msg) {
+                continue;
+            }
+
+            return Ok(output_lint_result(
+                &format!("mvn {name}"),
+                file_path,
+                &stdout,
+                &stderr,
+                output.status.success(),
+            ));
+        }
+
+        return Ok(format!(
+            r#"{{"continue":true,"systemMessage":"No Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."}}"#,
+            escape_json(file_path)
+        ));
+    }
+
+    if gradle_path.exists() || gradle_kts_path.exists() {
+        let gradle_cmd = if Path::new(project_root).join("gradlew").exists() {
+            "./gradlew"
+        } else {
+            "gradle"
+        };
+
+        for (task, not_found_msg) in gradle_linters {
+            let output = Command::new(gradle_cmd)
+                .args([*task, "-q"])
+                .current_dir(project_root)
+                .output()?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            // Check if task exists
+            if stderr.contains(not_found_msg) {
+                continue;
+            }
+
+            return Ok(output_lint_result(
+                &format!("{gradle_cmd} {task}"),
+                file_path,
+                &stdout,
+                &stderr,
+                output.status.success(),
+            ));
+        }
+
+        return Ok(format!(
+            r#"{{"continue":true,"systemMessage":"No Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle."}}"#,
+            escape_json(file_path)
+        ));
+    }
+
+    // No build tool found
+    Ok(format!(
+        r#"{{"continue":true,"systemMessage":"No Java build tool found for {}. Add pom.xml or build.gradle."}}"#,
+        escape_json(file_path)
+    ))
+}
+
 fn filter_clippy_output(stdout: &str, stderr: &str, file_path: &str) -> String {
     let combined = format!("{stderr}\n{stdout}");
     let file_name = Path::new(file_path)
