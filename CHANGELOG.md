@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.3.0...ralph-hook-lint-v0.4.0) (2026-01-31)
+
+
+### Features
+
+* support python linters ([cefe362](https://github.com/chenhunghan/ralph-hook-lint/commit/cefe362ffa2640c0ce622c321799ba8bb21a675d))
+
 ## [0.3.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.2.1...ralph-hook-lint-v0.3.0) (2026-01-31)
 
 
