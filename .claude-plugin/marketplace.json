@@ -1,13 +1,16 @@
 {
   "name": "ralph-hook-lint",
+  "metadata": {
+    "description": "plugins for lint files"
+  },
   "owner": {
     "name": "Hung-Han Chen",
     "email": "chenhungh@gmail.com"
   },
   "plugins": [
     {
-      "name": "lint-hook",
-      "source": "."
+      "name": "ralph-hook-lint",
+      "source": "./"
     }
   ]
 }

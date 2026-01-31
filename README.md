@@ -5,3 +5,15 @@ Zero dependencies lighting fast universal lint hook for your ~~Ralph Wiggum~~ ag
 ## What it does
 
 Lints after every `Write`/`Edit` operation in Claude Code. If lint errors are found, the agent is prompted to fix them.
+
+## Supported Languages
+
+- **JavaScript/TypeScript**: `oxlint` > `biome` > `eslint` (in order of preference)
+- **Rust**: `clippy`
+
+## Installation
+
+```bash
+claude plugin marketplace add chenhunghan/ralph-hook-lint
+claude plugin install chenhunghan/ralph-hook-lint
+```
