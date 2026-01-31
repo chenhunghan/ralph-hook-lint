@@ -8,8 +8,10 @@ Lints after every `Write`/`Edit` operation in Claude Code. If lint errors are fo
 
 ## Supported Languages
 
-- **JavaScript/TypeScript**: `oxlint` > `biome` > `eslint` (in order of preference)
+- **JavaScript/TypeScript**: `oxlint` > `biome` > `eslint` > `npm run lint` (in order of preference)
 - **Rust**: `clippy`
+- **Python**: `ruff` > `mypy` > `pylint` > `flake8` (in order of preference)
+- **Java**: Maven (`pmd:check` > `spotbugs:check`) or Gradle (`pmdMain` > `spotbugsMain`)
 
 ## Installation
 
