@@ -27,12 +27,9 @@ claude plugin marketplace add chenhunghan/ralph-hook-lint
 claude plugin install ralph-hook-lint
 ```
 
-## Update
+## Update Plugin
 
 ```bash
-# Update the marketplace first (fetches latest from GitHub)
 claude plugin marketplace update ralph-hook-lint
-
-# Then update the plugin
 claude plugin update ralph-hook-lint@ralph-hook-lint
 ```
