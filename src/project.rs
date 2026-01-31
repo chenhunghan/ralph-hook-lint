@@ -16,17 +16,21 @@ pub struct ProjectInfo {
 pub enum Lang {
     JavaScript,
     Rust,
+    Python,
 }
 
 /// Detect language from file extension
 pub fn detect_lang(file_path: &str) -> Option<Lang> {
     let js_extensions = [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
     let rust_extensions = [".rs"];
+    let python_extensions = [".py", ".pyi"];
 
     if js_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::JavaScript)
     } else if rust_extensions.iter().any(|ext| file_path.ends_with(ext)) {
         Some(Lang::Rust)
+    } else if python_extensions.iter().any(|ext| file_path.ends_with(ext)) {
+        Some(Lang::Python)
     } else {
         None
     }
@@ -43,6 +47,7 @@ pub fn find_project_root(file_path: &str) -> Option<ProjectInfo> {
     match lang {
         Lang::JavaScript => find_npm_root(&file_dir).map(|root| ProjectInfo { root, lang }),
         Lang::Rust => find_cargo_root(&file_dir).map(|root| ProjectInfo { root, lang }),
+        Lang::Python => find_python_root(&file_dir).map(|root| ProjectInfo { root, lang }),
     }
 }
 
@@ -70,6 +75,26 @@ fn find_cargo_root(dir: &str) -> Option<String> {
         let cargo_toml = current.join("Cargo.toml");
         if cargo_toml.exists() {
             return Some(current.to_string_lossy().to_string());
+        }
+        current = current.parent()?;
+    }
+}
+
+/// Find the nearest Python project root by walking up the directory tree
+/// Looks for pyproject.toml, setup.py, setup.cfg, or requirements.txt
+fn find_python_root(dir: &str) -> Option<String> {
+    let markers = [
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "requirements.txt",
+    ];
+    let mut current = Path::new(dir);
+    loop {
+        for marker in &markers {
+            if current.join(marker).exists() {
+                return Some(current.to_string_lossy().to_string());
+            }
         }
         current = current.parent()?;
     }
@@ -175,9 +200,52 @@ mod tests {
     }
 
     #[test]
+    fn detect_lang_python() {
+        assert_eq!(detect_lang("/path/to/file.py"), Some(Lang::Python));
+        assert_eq!(detect_lang("/path/to/file.pyi"), Some(Lang::Python));
+    }
+
+    #[test]
     fn detect_lang_unsupported() {
-        assert_eq!(detect_lang("/path/to/file.py"), None);
         assert_eq!(detect_lang("/path/to/file.go"), None);
         assert_eq!(detect_lang("/path/to/file.txt"), None);
+        assert_eq!(detect_lang("/path/to/file.rb"), None);
+    }
+
+    #[test]
+    fn find_project_root_for_python_file() {
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/python/project");
+
+        let file_path = fixture_dir.join("src/main.py");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some(), "Expected to find project root");
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Python);
+        assert!(
+            info.root.ends_with("project"),
+            "Expected project, got: {}",
+            info.root
+        );
+    }
+
+    #[test]
+    fn find_project_root_python_monorepo() {
+        let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/python/monorepo/packages/app");
+
+        let file_path = fixture_dir.join("src/lib.py");
+        let result = find_project_root(&file_path.to_string_lossy());
+
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.lang, Lang::Python);
+        // Should find the package's pyproject.toml, not the monorepo root
+        assert!(
+            info.root.ends_with("app"),
+            "Expected app package, got: {}",
+            info.root
+        );
     }
 }

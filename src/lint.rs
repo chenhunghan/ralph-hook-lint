@@ -94,6 +94,73 @@ pub fn run_rust_lint(
     }
 }
 
+pub fn run_python_lint(
+    file_path: &str,
+    project_root: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Try linters in order of speed: ruff (fastest), mypy, pylint, flake8
+    let linters: &[(&str, &[&str])] = &[
+        ("ruff", &["check", "--output-format=concise", "{{file}}"]),
+        ("mypy", &["{{file}}"]),
+        ("pylint", &["--output-format=text", "{{file}}"]),
+        ("flake8", &["{{file}}"]),
+    ];
+
+    // Check for virtual environment paths first, then system paths
+    let venv_dirs = [".venv/bin", "venv/bin", ".env/bin", "env/bin"];
+
+    for (linter, args) in linters {
+        // Try virtual environment first
+        let mut bin_path: Option<String> = None;
+
+        for venv_dir in &venv_dirs {
+            let venv_path = format!("{project_root}/{venv_dir}/{linter}");
+            if Path::new(&venv_path).exists() {
+                bin_path = Some(venv_path);
+                break;
+            }
+        }
+
+        // Fall back to system PATH
+        if bin_path.is_none() {
+            if let Ok(output) = Command::new("which").arg(linter).output() {
+                if output.status.success() {
+                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !path.is_empty() {
+                        bin_path = Some(path);
+                    }
+                }
+            }
+        }
+
+        if let Some(bin) = bin_path {
+            let actual_args: Vec<String> = args
+                .iter()
+                .map(|a| a.replace("{{file}}", file_path))
+                .collect();
+
+            let output = Command::new(&bin)
+                .args(&actual_args)
+                .current_dir(project_root)
+                .output()?;
+
+            return Ok(output_lint_result(
+                linter,
+                file_path,
+                &String::from_utf8_lossy(&output.stdout),
+                &String::from_utf8_lossy(&output.stderr),
+                output.status.success(),
+            ));
+        }
+    }
+
+    // No linter found
+    Ok(format!(
+        r#"{{"continue":true,"systemMessage":"No Python linter found for {}. Install ruff for best performance: pip install ruff"}}"#,
+        escape_json(file_path)
+    ))
+}
+
 fn filter_clippy_output(stdout: &str, stderr: &str, file_path: &str) -> String {
     let combined = format!("{stderr}\n{stdout}");
     let file_name = Path::new(file_path)
