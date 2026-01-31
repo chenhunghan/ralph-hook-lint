@@ -3,4 +3,4 @@
 build:
 	cargo build --release
 	mkdir -p bin
-	cp target/release/lint bin/
+	cp target/release/ralph-hook-lint bin/
