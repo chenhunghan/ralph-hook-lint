@@ -61,7 +61,7 @@ case "$OS-$ARCH" in
     PLATFORM="aarch64-unknown-linux-gnu"
     ;;
   *)
-    echo "{\"continue\": true, \"systemMessage\": \"lint-hook: unsupported platform $OS-$ARCH\"}"
+    echo "{\"continue\": true, \"systemMessage\": \"[ralph-hook-lint] unsupported platform $OS-$ARCH\"}"
     exit 0
     ;;
 esac
@@ -73,9 +73,9 @@ RELEASE_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}-
 cd "$BIN_DIR"
 if curl -fsSL "$RELEASE_URL" | tar xz 2>/dev/null; then
   chmod +x "$BIN_DIR/$BINARY_NAME"
-  echo "{\"continue\": true, \"systemMessage\": \"lint-hook: binary installed ($LATEST_VERSION)\"}"
+  echo "{\"continue\": true, \"systemMessage\": \"[ralph-hook-lint] binary installed ($LATEST_VERSION)\"}"
 else
-  echo "{\"continue\": true, \"systemMessage\": \"lint-hook: failed to download binary from $RELEASE_URL\"}"
+  echo "{\"continue\": true, \"systemMessage\": \"[ralph-hook-lint] failed to download binary from $RELEASE_URL\"}"
 fi
 
 exit 0
