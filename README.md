@@ -33,3 +33,17 @@ claude plugin install ralph-hook-lint
 claude plugin marketplace update ralph-hook-lint
 claude plugin update ralph-hook-lint@ralph-hook-lint
 ```
+
+## Debug Mode
+
+By default, the hook only outputs `systemMessage` when blocking (lint errors found). To see all diagnostic messages, enable debug mode by adding `--debug` to the command in `hooks.json`:
+
+1. Open `~/.claude/plugins/ralph-hook-lint/hooks/hooks.json`
+2. Change the command from:
+   ```json
+   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint"
+   ```
+   to:
+   ```json
+   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --debug"
+   ```

@@ -3,8 +3,17 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn run_binary(input: &str) -> String {
+    run_binary_with_args(input, &[])
+}
+
+fn run_binary_debug(input: &str) -> String {
+    run_binary_with_args(input, &["--debug"])
+}
+
+fn run_binary_with_args(input: &str, args: &[&str]) -> String {
     let binary = env!("CARGO_BIN_EXE_ralph-hook-lint");
     let mut child = Command::new(binary)
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -33,7 +42,7 @@ fn finds_package_json_directory() {
         file_path.display()
     );
 
-    let output = run_binary(&input);
+    let output = run_binary_debug(&input);
 
     // Should skip because no linter is installed, but should find package.json
     assert!(
@@ -45,7 +54,7 @@ fn finds_package_json_directory() {
 #[test]
 fn no_package_json_skips() {
     let input = r#"{"tool_input":{"file_path":"/tmp/no-package/file.ts"}}"#;
-    let output = run_binary(input);
+    let output = run_binary_debug(input);
 
     assert!(
         output.contains("no package.json found") || output.contains("skipping lint"),
@@ -56,7 +65,7 @@ fn no_package_json_skips() {
 #[test]
 fn unsupported_file_type_skips() {
     let input = r#"{"tool_input":{"file_path":"/some/path/file.py"}}"#;
-    let output = run_binary(input);
+    let output = run_binary_debug(input);
 
     assert!(
         output.contains("unsupported file type") || output.contains("skipping lint"),
@@ -67,7 +76,7 @@ fn unsupported_file_type_skips() {
 #[test]
 fn missing_file_path_skips() {
     let input = r#"{"tool_input":{"other":"value"}}"#;
-    let output = run_binary(input);
+    let output = run_binary_debug(input);
 
     assert!(
         output.contains("no file_path provided"),
@@ -94,7 +103,7 @@ fn nested_projects_finds_closest_package_json() {
         file_path.display()
     );
 
-    let output = run_binary(&input);
+    let output = run_binary_debug(&input);
 
     // Valid outcomes: No linter found, Lint passed, or Lint errors (all mean package.json was found)
     assert!(
@@ -129,7 +138,7 @@ fn rust_project_finds_cargo_toml() {
         file_path.display()
     );
 
-    let output = run_binary(&input);
+    let output = run_binary_debug(&input);
 
     // Should find Cargo.toml and run clippy (or report lint passed/errors)
     assert!(
@@ -160,7 +169,7 @@ fn rust_monorepo_finds_crate_cargo_toml() {
         file_path.display()
     );
 
-    let output = run_binary(&input);
+    let output = run_binary_debug(&input);
 
     // Should find Cargo.toml and run clippy
     assert!(
@@ -174,12 +183,36 @@ fn rust_monorepo_finds_crate_cargo_toml() {
 #[test]
 fn rust_file_no_cargo_toml_skips() {
     let input = r#"{"tool_input":{"file_path":"/tmp/no-cargo/file.rs"}}"#;
-    let output = run_binary(input);
+    let output = run_binary_debug(input);
 
     assert!(
         output.contains("unsupported file type")
             || output.contains("no project found")
             || output.contains("skipping lint"),
         "Expected skip message for Rust file without Cargo.toml, got: {output}"
+    );
+}
+
+#[test]
+fn no_debug_omits_system_message_on_continue() {
+    let input = r#"{"tool_input":{"other":"value"}}"#;
+    let output = run_binary(input);
+
+    assert_eq!(
+        output.trim(),
+        r#"{"continue":true}"#,
+        "Without --debug, continue responses should not contain systemMessage"
+    );
+}
+
+#[test]
+fn no_debug_skips_unsupported_without_system_message() {
+    let input = r#"{"tool_input":{"file_path":"/tmp/no-cargo/file.rs"}}"#;
+    let output = run_binary(input);
+
+    assert_eq!(
+        output.trim(),
+        r#"{"continue":true}"#,
+        "Without --debug, skip responses should not contain systemMessage"
     );
 }

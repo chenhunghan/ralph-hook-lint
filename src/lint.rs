@@ -5,6 +5,7 @@ use std::process::Command;
 pub fn run_js_lint(
     file_path: &str,
     project_root: &str,
+    debug: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order: oxlint, biome, eslint
     let linters: &[(&str, &[&str])] = &[
@@ -32,6 +33,7 @@ pub fn run_js_lint(
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
+                debug,
             ));
         }
     }
@@ -53,20 +55,22 @@ pub fn run_js_lint(
                 &stdout,
                 &stderr,
                 output.status.success(),
+                debug,
             ));
         }
     }
 
     // No linter found
-    Ok(format!(
-        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no linter found for {}."}}"#,
-        escape_json(file_path)
+    Ok(continue_result(
+        debug,
+        &format!("[ralph-hook-lint] no linter found for {}.", file_path),
     ))
 }
 
 pub fn run_rust_lint(
     file_path: &str,
     project_root: &str,
+    debug: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Run clippy on the specific file
     let output = Command::new("cargo")
@@ -81,9 +85,12 @@ pub fn run_rust_lint(
     let file_errors = filter_clippy_output(&stdout, &stderr, file_path);
 
     if file_errors.is_empty() {
-        Ok(format!(
-            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for {} using clippy."}}"#,
-            escape_json(file_path)
+        Ok(continue_result(
+            debug,
+            &format!(
+                "[ralph-hook-lint] lint passed for {} using clippy.",
+                file_path
+            ),
         ))
     } else {
         Ok(format!(
@@ -97,6 +104,7 @@ pub fn run_rust_lint(
 pub fn run_python_lint(
     file_path: &str,
     project_root: &str,
+    debug: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order of speed: ruff (fastest), mypy, pylint, flake8
     let linters: &[(&str, &[&str])] = &[
@@ -150,20 +158,25 @@ pub fn run_python_lint(
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
+                debug,
             ));
         }
     }
 
     // No linter found
-    Ok(format!(
-        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Python linter found for {}. Install ruff for best performance: pip install ruff"}}"#,
-        escape_json(file_path)
+    Ok(continue_result(
+        debug,
+        &format!(
+            "[ralph-hook-lint] no Python linter found for {}. Install ruff for best performance: pip install ruff",
+            file_path
+        ),
     ))
 }
 
 pub fn run_java_lint(
     file_path: &str,
     project_root: &str,
+    debug: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Detect build tool: Maven or Gradle
     let pom_path = Path::new(project_root).join("pom.xml");
@@ -210,12 +223,16 @@ pub fn run_java_lint(
                 &stdout,
                 &stderr,
                 output.status.success(),
+                debug,
             ));
         }
 
-        return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."}}"#,
-            escape_json(file_path)
+        return Ok(continue_result(
+            debug,
+            &format!(
+                "[ralph-hook-lint] no Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml.",
+                file_path
+            ),
         ));
     }
 
@@ -246,25 +263,33 @@ pub fn run_java_lint(
                 &stdout,
                 &stderr,
                 output.status.success(),
+                debug,
             ));
         }
 
-        return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle."}}"#,
-            escape_json(file_path)
+        return Ok(continue_result(
+            debug,
+            &format!(
+                "[ralph-hook-lint] no Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle.",
+                file_path
+            ),
         ));
     }
 
     // No build tool found
-    Ok(format!(
-        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java build tool found for {}. Add pom.xml or build.gradle."}}"#,
-        escape_json(file_path)
+    Ok(continue_result(
+        debug,
+        &format!(
+            "[ralph-hook-lint] no Java build tool found for {}. Add pom.xml or build.gradle.",
+            file_path
+        ),
     ))
 }
 
 pub fn run_go_lint(
     file_path: &str,
     project_root: &str,
+    debug: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order: golangci-lint (comprehensive), staticcheck, go vet
     let linters: &[(&str, &[&str])] = &[
@@ -292,6 +317,7 @@ pub fn run_go_lint(
                     &String::from_utf8_lossy(&output.stdout),
                     &String::from_utf8_lossy(&output.stderr),
                     output.status.success(),
+                    debug,
                 ));
             }
         }
@@ -311,14 +337,18 @@ pub fn run_go_lint(
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
+                debug,
             ));
         }
     }
 
     // No linter found
-    Ok(format!(
-        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run"}}"#,
-        escape_json(file_path)
+    Ok(continue_result(
+        debug,
+        &format!(
+            "[ralph-hook-lint] no Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run",
+            file_path
+        ),
     ))
 }
 
@@ -356,18 +386,33 @@ pub fn escape_json(s: &str) -> String {
     result
 }
 
+/// Build a `{"continue":true}` response, including `systemMessage` only in debug mode.
+pub fn continue_result(debug: bool, message: &str) -> String {
+    if debug {
+        format!(
+            r#"{{"continue":true,"systemMessage":"{}"}}"#,
+            escape_json(message)
+        )
+    } else {
+        r#"{"continue":true}"#.to_string()
+    }
+}
+
 fn output_lint_result(
     linter: &str,
     file_path: &str,
     stdout: &str,
     stderr: &str,
     success: bool,
+    debug: bool,
 ) -> String {
     if success {
-        format!(
-            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for {} using {}."}}"#,
-            escape_json(file_path),
-            escape_json(linter)
+        continue_result(
+            debug,
+            &format!(
+                "[ralph-hook-lint] lint passed for {} using {}.",
+                file_path, linter
+            ),
         )
     } else {
         let output = if !stdout.is_empty() && !stderr.is_empty() {
@@ -430,8 +475,8 @@ mod tests {
     }
 
     #[test]
-    fn test_output_lint_result_success() {
-        let result = output_lint_result("eslint", "src/app.js", "", "", true);
+    fn test_output_lint_result_success_debug() {
+        let result = output_lint_result("eslint", "src/app.js", "", "", true, true);
         assert_eq!(
             result,
             r#"{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for src/app.js using eslint."}"#
@@ -439,8 +484,14 @@ mod tests {
     }
 
     #[test]
+    fn test_output_lint_result_success_no_debug() {
+        let result = output_lint_result("eslint", "src/app.js", "", "", true, false);
+        assert_eq!(result, r#"{"continue":true}"#);
+    }
+
+    #[test]
     fn test_output_lint_result_failure_stdout_only() {
-        let result = output_lint_result("eslint", "src/app.js", "error on line 1", "", false);
+        let result = output_lint_result("eslint", "src/app.js", "error on line 1", "", false, true);
         assert_eq!(
             result,
             r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
@@ -449,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_output_lint_result_failure_stderr_only() {
-        let result = output_lint_result("eslint", "src/app.js", "", "error on line 2", false);
+        let result = output_lint_result("eslint", "src/app.js", "", "error on line 2", false, true);
         assert_eq!(
             result,
             r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 2\n\nFix lint errors."}"#
@@ -458,7 +509,14 @@ mod tests {
 
     #[test]
     fn test_output_lint_result_failure_both() {
-        let result = output_lint_result("eslint", "src/app.js", "stdout err", "stderr err", false);
+        let result = output_lint_result(
+            "eslint",
+            "src/app.js",
+            "stdout err",
+            "stderr err",
+            false,
+            true,
+        );
         assert_eq!(
             result,
             r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nstdout err\nstderr err\n\nFix lint errors."}"#
@@ -466,11 +524,42 @@ mod tests {
     }
 
     #[test]
-    fn test_output_lint_result_escapes_special_chars() {
+    fn test_output_lint_result_failure_no_debug_still_blocks() {
         let result =
-            output_lint_result("eslint", "src/app.js", "error: \"unexpected\"\n", "", false);
+            output_lint_result("eslint", "src/app.js", "error on line 1", "", false, false);
+        assert_eq!(
+            result,
+            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
+        );
+    }
+
+    #[test]
+    fn test_output_lint_result_escapes_special_chars() {
+        let result = output_lint_result(
+            "eslint",
+            "src/app.js",
+            "error: \"unexpected\"\n",
+            "",
+            false,
+            true,
+        );
         assert!(result.contains(r#"\"unexpected\""#));
         assert!(result.contains(r"\n"));
+    }
+
+    #[test]
+    fn test_continue_result_debug() {
+        let result = continue_result(true, "[ralph-hook-lint] some message");
+        assert_eq!(
+            result,
+            r#"{"continue":true,"systemMessage":"[ralph-hook-lint] some message"}"#
+        );
+    }
+
+    #[test]
+    fn test_continue_result_no_debug() {
+        let result = continue_result(false, "[ralph-hook-lint] some message");
+        assert_eq!(result, r#"{"continue":true}"#);
     }
 
     #[test]
