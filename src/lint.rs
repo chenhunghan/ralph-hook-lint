@@ -63,7 +63,7 @@ pub fn run_js_lint(
     // No linter found
     Ok(continue_result(
         debug,
-        &format!("[ralph-hook-lint] no linter found for {}.", file_path),
+        &format!("[ralph-hook-lint] no linter found for {file_path}."),
     ))
 }
 
@@ -87,10 +87,7 @@ pub fn run_rust_lint(
     if file_errors.is_empty() {
         Ok(continue_result(
             debug,
-            &format!(
-                "[ralph-hook-lint] lint passed for {} using clippy.",
-                file_path
-            ),
+            &format!("[ralph-hook-lint] lint passed for {file_path} using clippy."),
         ))
     } else {
         Ok(format!(
@@ -167,8 +164,7 @@ pub fn run_python_lint(
     Ok(continue_result(
         debug,
         &format!(
-            "[ralph-hook-lint] no Python linter found for {}. Install ruff for best performance: pip install ruff",
-            file_path
+            "[ralph-hook-lint] no Python linter found for {file_path}. Install ruff for best performance: pip install ruff"
         ),
     ))
 }
@@ -230,8 +226,7 @@ pub fn run_java_lint(
         return Ok(continue_result(
             debug,
             &format!(
-                "[ralph-hook-lint] no Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml.",
-                file_path
+                "[ralph-hook-lint] no Java linter configured for {file_path}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."
             ),
         ));
     }
@@ -270,8 +265,7 @@ pub fn run_java_lint(
         return Ok(continue_result(
             debug,
             &format!(
-                "[ralph-hook-lint] no Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle.",
-                file_path
+                "[ralph-hook-lint] no Java linter configured for {file_path}. Add pmd or spotbugs plugin to build.gradle."
             ),
         ));
     }
@@ -280,8 +274,7 @@ pub fn run_java_lint(
     Ok(continue_result(
         debug,
         &format!(
-            "[ralph-hook-lint] no Java build tool found for {}. Add pom.xml or build.gradle.",
-            file_path
+            "[ralph-hook-lint] no Java build tool found for {file_path}. Add pom.xml or build.gradle."
         ),
     ))
 }
@@ -346,8 +339,7 @@ pub fn run_go_lint(
     Ok(continue_result(
         debug,
         &format!(
-            "[ralph-hook-lint] no Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run",
-            file_path
+            "[ralph-hook-lint] no Go linter found for {file_path}. Install golangci-lint for best results: https://golangci-lint.run"
         ),
     ))
 }
@@ -409,10 +401,7 @@ fn output_lint_result(
     if success {
         continue_result(
             debug,
-            &format!(
-                "[ralph-hook-lint] lint passed for {} using {}.",
-                file_path, linter
-            ),
+            &format!("[ralph-hook-lint] lint passed for {file_path} using {linter}."),
         )
     } else {
         let output = if !stdout.is_empty() && !stderr.is_empty() {
