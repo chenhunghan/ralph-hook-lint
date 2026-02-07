@@ -34,7 +34,6 @@ if [[ -x "$BIN_DIR/$BINARY_NAME" ]] && [[ -n "$INSTALLED_VERSION" ]] && [[ -n "$
   if [[ "$INSTALLED_NORMALIZED" == "$LATEST_NORMALIZED" ]]; then
     exit 0
   fi
-  echo "{\"continue\": true, \"systemMessage\": \"lint-hook: updating from $INSTALLED_VERSION to $LATEST_VERSION\"}"
 fi
 
 # Skip if we couldn't fetch the latest version (network issue) and binary exists
