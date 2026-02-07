@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.6.0...ralph-hook-lint-v0.6.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* consistent lowercase after the [ralph-hook-lint] prefix ([7793056](https://github.com/chenhunghan/ralph-hook-lint/commit/77930561fef745f2fa6b0f344dcb8e5aebbeb360))
+
 ## [0.6.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.5.0...ralph-hook-lint-v0.6.0) (2026-01-31)
 
 
