@@ -37,7 +37,7 @@ fn finds_package_json_directory() {
 
     // Should skip because no linter is installed, but should find package.json
     assert!(
-        output.contains("No linter found") || output.contains("Skipping lint"),
+        output.contains("no linter found") || output.contains("skipping lint"),
         "Unexpected output: {output}"
     );
 }
@@ -48,7 +48,7 @@ fn no_package_json_skips() {
     let output = run_binary(input);
 
     assert!(
-        output.contains("no package.json found") || output.contains("Skipping lint"),
+        output.contains("no package.json found") || output.contains("skipping lint"),
         "Expected skip message, got: {output}"
     );
 }
@@ -59,7 +59,7 @@ fn unsupported_file_type_skips() {
     let output = run_binary(input);
 
     assert!(
-        output.contains("unsupported file type") || output.contains("Skipping lint"),
+        output.contains("unsupported file type") || output.contains("skipping lint"),
         "Expected skip message for unsupported file, got: {output}"
     );
 }
@@ -98,10 +98,10 @@ fn nested_projects_finds_closest_package_json() {
 
     // Valid outcomes: No linter found, Lint passed, or Lint errors (all mean package.json was found)
     assert!(
-        output.contains("No linter found")
-            || output.contains("Lint passed")
-            || output.contains("Lint errors")
-            || output.contains("Skipping lint"),
+        output.contains("no linter found")
+            || output.contains("lint passed")
+            || output.contains("lint errors")
+            || output.contains("skipping lint"),
         "Expected to find closest package.json, got: {output}"
     );
 
@@ -134,8 +134,8 @@ fn rust_project_finds_cargo_toml() {
     // Should find Cargo.toml and run clippy (or report lint passed/errors)
     assert!(
         output.contains("clippy")
-            || output.contains("Lint passed")
-            || output.contains("Lint errors"),
+            || output.contains("lint passed")
+            || output.contains("lint errors"),
         "Expected clippy to run for Rust project, got: {output}"
     );
 }
@@ -165,8 +165,8 @@ fn rust_monorepo_finds_crate_cargo_toml() {
     // Should find Cargo.toml and run clippy
     assert!(
         output.contains("clippy")
-            || output.contains("Lint passed")
-            || output.contains("Lint errors"),
+            || output.contains("lint passed")
+            || output.contains("lint errors"),
         "Expected clippy to run for Rust monorepo crate, got: {output}"
     );
 }
@@ -179,7 +179,7 @@ fn rust_file_no_cargo_toml_skips() {
     assert!(
         output.contains("unsupported file type")
             || output.contains("no project found")
-            || output.contains("Skipping lint"),
+            || output.contains("skipping lint"),
         "Expected skip message for Rust file without Cargo.toml, got: {output}"
     );
 }

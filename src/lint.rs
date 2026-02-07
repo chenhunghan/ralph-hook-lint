@@ -59,7 +59,7 @@ pub fn run_js_lint(
 
     // No linter found
     Ok(format!(
-        r#"{{"continue":true,"systemMessage":"No linter found for {}."}}"#,
+        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no linter found for {}."}}"#,
         escape_json(file_path)
     ))
 }
@@ -82,12 +82,12 @@ pub fn run_rust_lint(
 
     if file_errors.is_empty() {
         Ok(format!(
-            r#"{{"continue":true,"systemMessage":"Lint passed for {} using clippy."}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for {} using clippy."}}"#,
             escape_json(file_path)
         ))
     } else {
         Ok(format!(
-            r#"{{"decision":"block","reason":"Lint errors in {} using clippy:\n\n{}\n\nFix lint errors."}}"#,
+            r#"{{"decision":"block","reason":"[ralph-hook-lint] lint errors in {} using clippy:\n\n{}\n\nFix lint errors."}}"#,
             escape_json(file_path),
             escape_json(&file_errors)
         ))
@@ -156,7 +156,7 @@ pub fn run_python_lint(
 
     // No linter found
     Ok(format!(
-        r#"{{"continue":true,"systemMessage":"No Python linter found for {}. Install ruff for best performance: pip install ruff"}}"#,
+        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Python linter found for {}. Install ruff for best performance: pip install ruff"}}"#,
         escape_json(file_path)
     ))
 }
@@ -214,7 +214,7 @@ pub fn run_java_lint(
         }
 
         return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"No Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java linter configured for {}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."}}"#,
             escape_json(file_path)
         ));
     }
@@ -250,14 +250,14 @@ pub fn run_java_lint(
         }
 
         return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"No Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle."}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java linter configured for {}. Add pmd or spotbugs plugin to build.gradle."}}"#,
             escape_json(file_path)
         ));
     }
 
     // No build tool found
     Ok(format!(
-        r#"{{"continue":true,"systemMessage":"No Java build tool found for {}. Add pom.xml or build.gradle."}}"#,
+        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Java build tool found for {}. Add pom.xml or build.gradle."}}"#,
         escape_json(file_path)
     ))
 }
@@ -317,7 +317,7 @@ pub fn run_go_lint(
 
     // No linter found
     Ok(format!(
-        r#"{{"continue":true,"systemMessage":"No Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run"}}"#,
+        r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] no Go linter found for {}. Install golangci-lint for best results: https://golangci-lint.run"}}"#,
         escape_json(file_path)
     ))
 }
@@ -365,7 +365,7 @@ fn output_lint_result(
 ) -> String {
     if success {
         format!(
-            r#"{{"continue":true,"systemMessage":"Lint passed for {} using {}."}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for {} using {}."}}"#,
             escape_json(file_path),
             escape_json(linter)
         )
@@ -379,7 +379,7 @@ fn output_lint_result(
         };
 
         format!(
-            r#"{{"decision":"block","reason":"Lint errors in {} using {}:\n\n{}\n\nFix lint errors."}}"#,
+            r#"{{"decision":"block","reason":"[ralph-hook-lint] lint errors in {} using {}:\n\n{}\n\nFix lint errors."}}"#,
             escape_json(file_path),
             escape_json(linter),
             escape_json(output.trim())
@@ -434,7 +434,7 @@ mod tests {
         let result = output_lint_result("eslint", "src/app.js", "", "", true);
         assert_eq!(
             result,
-            r#"{"continue":true,"systemMessage":"Lint passed for src/app.js using eslint."}"#
+            r#"{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for src/app.js using eslint."}"#
         );
     }
 
@@ -443,7 +443,7 @@ mod tests {
         let result = output_lint_result("eslint", "src/app.js", "error on line 1", "", false);
         assert_eq!(
             result,
-            r#"{"decision":"block","reason":"Lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
+            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
         );
     }
 
@@ -452,7 +452,7 @@ mod tests {
         let result = output_lint_result("eslint", "src/app.js", "", "error on line 2", false);
         assert_eq!(
             result,
-            r#"{"decision":"block","reason":"Lint errors in src/app.js using eslint:\n\nerror on line 2\n\nFix lint errors."}"#
+            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 2\n\nFix lint errors."}"#
         );
     }
 
@@ -461,7 +461,7 @@ mod tests {
         let result = output_lint_result("eslint", "src/app.js", "stdout err", "stderr err", false);
         assert_eq!(
             result,
-            r#"{"decision":"block","reason":"Lint errors in src/app.js using eslint:\n\nstdout err\nstderr err\n\nFix lint errors."}"#
+            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nstdout err\nstderr err\n\nFix lint errors."}"#
         );
     }
 

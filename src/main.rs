@@ -21,7 +21,7 @@ fn main() {
     match result {
         Ok(output) => println!("{output}"),
         Err(e) => println!(
-            r#"{{"continue":true,"systemMessage":"Lint hook error: {}"}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] lint hook error: {}"}}"#,
             escape_json(&e.to_string())
         ),
     }
@@ -39,7 +39,7 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
         match file_path {
             Some(fp) if !fp.is_empty() => fp,
             _ => return Ok(
-                r#"{"continue":true,"systemMessage":"no file_path provided, skipping lint hook."}"#
+                r#"{"continue":true,"systemMessage":"[ralph-hook-lint] no file_path provided, skipping lint hook."}"#
                     .to_string(),
             ),
         };
@@ -47,7 +47,7 @@ fn run() -> Result<String, Box<dyn std::error::Error>> {
     // Find the nearest project root (also validates file type)
     let Some(project) = find_project_root(&file_path) else {
         return Ok(format!(
-            r#"{{"continue":true,"systemMessage":"Skipping lint: unsupported file type or no project found for {}."}}"#,
+            r#"{{"continue":true,"systemMessage":"[ralph-hook-lint] skipping lint: unsupported file type or no project found for {}."}}"#,
             escape_json(&file_path)
         ));
     };
