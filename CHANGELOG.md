@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.6.1...ralph-hook-lint-v0.7.0) (2026-02-07)
+
+
+### Features
+
+* add --debug, disable by default ([e013083](https://github.com/chenhunghan/ralph-hook-lint/commit/e013083665c049503045e4ea3ca80f468e18b026))
+
+
+### Bug Fixes
+
+* fix auto update by adding argument ([f57f7ad](https://github.com/chenhunghan/ralph-hook-lint/commit/f57f7ad6bac4a28e2e9ffceeb37c4c750154f83a))
+* fix ci checks ([4a2bc72](https://github.com/chenhunghan/ralph-hook-lint/commit/4a2bc72a67ca01c93afcf1b559dd23e937535ac9))
+
 ## [0.6.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.6.0...ralph-hook-lint-v0.6.1) (2026-02-07)
 
 
