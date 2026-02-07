@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.7.0...ralph-hook-lint-v0.7.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* fix pacakge name is setup.sh ([457574e](https://github.com/chenhunghan/ralph-hook-lint/commit/457574eb8fbab2e294a22d4fd8cbd96a29a9a7a3))
+
 ## [0.7.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.6.1...ralph-hook-lint-v0.7.0) (2026-02-07)
 
 
