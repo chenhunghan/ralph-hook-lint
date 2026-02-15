@@ -21,8 +21,9 @@ fn main() {
     }
 
     let debug = args.iter().any(|a| a == "--debug");
+    let lenient = args.iter().any(|a| a == "--lenient");
 
-    let result = run(debug);
+    let result = run(debug, lenient);
     match result {
         Ok(output) => println!("{output}"),
         Err(e) => println!(
@@ -32,7 +33,7 @@ fn main() {
     }
 }
 
-fn run(debug: bool) -> Result<String, Box<dyn std::error::Error>> {
+fn run(debug: bool, lenient: bool) -> Result<String, Box<dyn std::error::Error>> {
     // Read input from stdin
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
@@ -61,10 +62,10 @@ fn run(debug: bool) -> Result<String, Box<dyn std::error::Error>> {
     };
 
     match project.lang {
-        Lang::JavaScript => run_js_lint(&file_path, &project.root, debug),
-        Lang::Rust => run_rust_lint(&file_path, &project.root, debug),
-        Lang::Python => run_python_lint(&file_path, &project.root, debug),
-        Lang::Java => run_java_lint(&file_path, &project.root, debug),
-        Lang::Go => run_go_lint(&file_path, &project.root, debug),
+        Lang::JavaScript => run_js_lint(&file_path, &project.root, debug, lenient),
+        Lang::Rust => run_rust_lint(&file_path, &project.root, debug, lenient),
+        Lang::Python => run_python_lint(&file_path, &project.root, debug, lenient),
+        Lang::Java => run_java_lint(&file_path, &project.root, debug, lenient),
+        Lang::Go => run_go_lint(&file_path, &project.root, debug, lenient),
     }
 }

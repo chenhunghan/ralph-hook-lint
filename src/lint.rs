@@ -6,6 +6,7 @@ pub fn run_js_lint(
     file_path: &str,
     project_root: &str,
     debug: bool,
+    lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order: oxlint, biome, eslint
     let linters: &[(&str, &[&str])] = &[
@@ -17,10 +18,34 @@ pub fn run_js_lint(
     for (linter, args) in linters {
         let bin_path = format!("{project_root}/node_modules/.bin/{linter}");
         if Path::new(&bin_path).exists() {
-            let actual_args: Vec<String> = args
+            let mut actual_args: Vec<String> = args
                 .iter()
                 .map(|a| a.replace("{{file}}", file_path))
                 .collect();
+
+            if lenient {
+                match *linter {
+                    "oxlint" => {
+                        actual_args.extend([
+                            "--allow".into(), "no-unused-vars".into(),
+                            "--allow".into(), "@typescript-eslint/no-unused-vars".into(),
+                        ]);
+                    }
+                    "biome" => {
+                        actual_args.extend([
+                            "--skip=correctness/noUnusedVariables".into(),
+                            "--skip=correctness/noUnusedImports".into(),
+                        ]);
+                    }
+                    "eslint" => {
+                        actual_args.extend([
+                            "--rule".into(), "no-unused-vars: off".into(),
+                            "--rule".into(), "@typescript-eslint/no-unused-vars: off".into(),
+                        ]);
+                    }
+                    _ => {}
+                }
+            }
 
             let output = Command::new(&bin_path)
                 .args(&actual_args)
@@ -71,10 +96,15 @@ pub fn run_rust_lint(
     file_path: &str,
     project_root: &str,
     debug: bool,
+    lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Run clippy on the specific file
+    let mut clippy_args = vec!["clippy", "--message-format=short", "--", "-D", "warnings"];
+    if lenient {
+        clippy_args.extend(["-A", "unused_variables", "-A", "unused_imports", "-A", "dead_code"]);
+    }
     let output = Command::new("cargo")
-        .args(["clippy", "--message-format=short", "--", "-D", "warnings"])
+        .args(&clippy_args)
         .current_dir(project_root)
         .output()?;
 
@@ -102,6 +132,7 @@ pub fn run_python_lint(
     file_path: &str,
     project_root: &str,
     debug: bool,
+    lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order of speed: ruff (fastest), mypy, pylint, flake8
     let linters: &[(&str, &[&str])] = &[
@@ -139,10 +170,25 @@ pub fn run_python_lint(
         }
 
         if let Some(bin) = bin_path {
-            let actual_args: Vec<String> = args
+            let mut actual_args: Vec<String> = args
                 .iter()
                 .map(|a| a.replace("{{file}}", file_path))
                 .collect();
+
+            if lenient {
+                match *linter {
+                    "ruff" => {
+                        actual_args.extend(["--ignore".into(), "F841,F401".into()]);
+                    }
+                    "pylint" => {
+                        actual_args.extend(["--disable=W0611,W0612".into()]);
+                    }
+                    "flake8" => {
+                        actual_args.extend(["--extend-ignore=F841,F401".into()]);
+                    }
+                    _ => {} // mypy doesn't check unused vars
+                }
+            }
 
             let output = Command::new(&bin)
                 .args(&actual_args)
@@ -173,7 +219,10 @@ pub fn run_java_lint(
     file_path: &str,
     project_root: &str,
     debug: bool,
+    lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // PMD/SpotBugs don't support clean CLI-level rule suppression
+    let _ = lenient;
     // Detect build tool: Maven or Gradle
     let pom_path = Path::new(project_root).join("pom.xml");
     let gradle_path = Path::new(project_root).join("build.gradle");
@@ -283,6 +332,7 @@ pub fn run_go_lint(
     file_path: &str,
     project_root: &str,
     debug: bool,
+    lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Try linters in order: golangci-lint (comprehensive), staticcheck, go vet
     let linters: &[(&str, &[&str])] = &[
@@ -294,10 +344,14 @@ pub fn run_go_lint(
         // Check if linter exists in PATH
         if let Ok(output) = Command::new("which").arg(linter).output() {
             if output.status.success() {
-                let actual_args: Vec<String> = args
+                let mut actual_args: Vec<String> = args
                     .iter()
                     .map(|a| a.replace("{{file}}", file_path))
                     .collect();
+
+                if lenient && *linter == "golangci-lint" {
+                    actual_args.push("--disable=unused".into());
+                }
 
                 let output = Command::new(linter)
                     .args(&actual_args)

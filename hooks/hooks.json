@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lenient"
           }
         ]
       }

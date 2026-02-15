@@ -10,6 +10,10 @@ fn run_binary_debug(input: &str) -> String {
     run_binary_with_args(input, &["--debug"])
 }
 
+fn run_binary_lenient(input: &str) -> String {
+    run_binary_with_args(input, &["--lenient", "--debug"])
+}
+
 fn run_binary_with_args(input: &str, args: &[&str]) -> String {
     let binary = env!("CARGO_BIN_EXE_ralph-hook-lint");
     let mut child = Command::new(binary)
@@ -214,5 +218,58 @@ fn no_debug_skips_unsupported_without_system_message() {
         output.trim(),
         r#"{"continue":true}"#,
         "Without --debug, skip responses should not contain systemMessage"
+    );
+}
+
+#[test]
+fn lenient_flag_accepted_for_ts() {
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ts/project");
+    let file_path = fixture_dir.join("src/index.ts");
+    let input = format!(
+        r#"{{"tool_input":{{"file_path":"{}"}}}}"#,
+        file_path.display()
+    );
+
+    let output = run_binary_lenient(&input);
+
+    // Should not crash; valid outcomes with --lenient
+    assert!(
+        output.contains("no linter found")
+            || output.contains("lint passed")
+            || output.contains("lint errors")
+            || output.contains("skipping lint"),
+        "Expected valid output with --lenient for TS, got: {output}"
+    );
+}
+
+#[test]
+fn lenient_flag_accepted_for_rust() {
+    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rust/project");
+    let file_path = fixture_dir.join("src/main.rs");
+    let input = format!(
+        r#"{{"tool_input":{{"file_path":"{}"}}}}"#,
+        file_path.display()
+    );
+
+    let output = run_binary_lenient(&input);
+
+    // Should run clippy with lenient flags without crashing
+    assert!(
+        output.contains("clippy")
+            || output.contains("lint passed")
+            || output.contains("lint errors"),
+        "Expected clippy to run with --lenient for Rust, got: {output}"
+    );
+}
+
+#[test]
+fn lenient_without_debug_produces_valid_output() {
+    let input = r#"{"tool_input":{"other":"value"}}"#;
+    let output = run_binary_with_args(input, &["--lenient"]);
+
+    assert_eq!(
+        output.trim(),
+        r#"{"continue":true}"#,
+        "--lenient without --debug should produce clean JSON"
     );
 }
