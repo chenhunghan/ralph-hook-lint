@@ -34,16 +34,26 @@ claude plugin marketplace update ralph-hook-lint
 claude plugin update ralph-hook-lint@ralph-hook-lint
 ```
 
-## Debug Mode
+## Lenient Mode
 
-By default, the hook only outputs `systemMessage` when blocking (lint errors found). To see all diagnostic messages, enable debug mode by adding `--debug` to the command in `hooks.json`:
+Enabled by default. When the agent edits files in multiple steps, intermediate states may have unused variables/imports. The `--lenient` flag suppresses these rules so the agent can work incrementally without being blocked mid-edit.
+
+To disable lenient mode, remove `--lenient` from the command in `hooks.json`:
 
 1. Open `~/.claude/plugins/ralph-hook-lint/hooks/hooks.json`
 2. Change the command from:
    ```json
-   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint"
+   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lenient"
    ```
    to:
    ```json
-   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --debug"
+   "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint"
    ```
+
+## Debug Mode
+
+By default, the hook only outputs `systemMessage` when blocking (lint errors found). To see all diagnostic messages, add `--debug` to the command in `hooks.json`:
+
+```json
+"command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lenient --debug"
+```
