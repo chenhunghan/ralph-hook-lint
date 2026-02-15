@@ -27,8 +27,10 @@ pub fn run_js_lint(
                 match *linter {
                     "oxlint" => {
                         actual_args.extend([
-                            "--allow".into(), "no-unused-vars".into(),
-                            "--allow".into(), "@typescript-eslint/no-unused-vars".into(),
+                            "--allow".into(),
+                            "no-unused-vars".into(),
+                            "--allow".into(),
+                            "@typescript-eslint/no-unused-vars".into(),
                         ]);
                     }
                     "biome" => {
@@ -39,8 +41,10 @@ pub fn run_js_lint(
                     }
                     "eslint" => {
                         actual_args.extend([
-                            "--rule".into(), "no-unused-vars: off".into(),
-                            "--rule".into(), "@typescript-eslint/no-unused-vars: off".into(),
+                            "--rule".into(),
+                            "no-unused-vars: off".into(),
+                            "--rule".into(),
+                            "@typescript-eslint/no-unused-vars: off".into(),
                         ]);
                     }
                     _ => {}
@@ -101,7 +105,14 @@ pub fn run_rust_lint(
     // Run clippy on the specific file
     let mut clippy_args = vec!["clippy", "--message-format=short", "--", "-D", "warnings"];
     if lenient {
-        clippy_args.extend(["-A", "unused_variables", "-A", "unused_imports", "-A", "dead_code"]);
+        clippy_args.extend([
+            "-A",
+            "unused_variables",
+            "-A",
+            "unused_imports",
+            "-A",
+            "dead_code",
+        ]);
     }
     let output = Command::new("cargo")
         .args(&clippy_args)
