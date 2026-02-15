@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.7.1...ralph-hook-lint-v0.8.0) (2026-02-15)
+
+
+### Features
+
+* add --lenient CLI flag to suppress unused-vars lint rules ([f312cc5](https://github.com/chenhunghan/ralph-hook-lint/commit/f312cc5a167537064fd4e094b455090827afd0b2))
+
+
+### Bug Fixes
+
+* apply rustfmt formatting to lint.rs ([27b07a1](https://github.com/chenhunghan/ralph-hook-lint/commit/27b07a14c2b111accb11a620bbb818a16a787958))
+
 ## [0.7.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.7.0...ralph-hook-lint-v0.7.1) (2026-02-07)
 
 
