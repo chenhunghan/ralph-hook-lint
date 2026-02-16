@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.8.0...ralph-hook-lint-v0.9.0) (2026-02-16)
+
+
+### Features
+
+* suppress undefined/not-defined rules in lenient mode ([675fb0f](https://github.com/chenhunghan/ralph-hook-lint/commit/675fb0fc2998532e92b509904c8fbb4d0e589b3b))
+
 ## [0.8.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.7.1...ralph-hook-lint-v0.8.0) (2026-02-15)
 
 
