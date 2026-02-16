@@ -31,12 +31,15 @@ pub fn run_js_lint(
                             "no-unused-vars".into(),
                             "--allow".into(),
                             "@typescript-eslint/no-unused-vars".into(),
+                            "--allow".into(),
+                            "no-undef".into(),
                         ]);
                     }
                     "biome" => {
                         actual_args.extend([
                             "--skip=correctness/noUnusedVariables".into(),
                             "--skip=correctness/noUnusedImports".into(),
+                            "--skip=correctness/noUndeclaredVariables".into(),
                         ]);
                     }
                     "eslint" => {
@@ -45,6 +48,10 @@ pub fn run_js_lint(
                             "no-unused-vars: off".into(),
                             "--rule".into(),
                             "@typescript-eslint/no-unused-vars: off".into(),
+                            "--rule".into(),
+                            "no-undef: off".into(),
+                            "--rule".into(),
+                            "react/jsx-no-undef: off".into(),
                         ]);
                     }
                     _ => {}
@@ -189,13 +196,13 @@ pub fn run_python_lint(
             if lenient {
                 match *linter {
                     "ruff" => {
-                        actual_args.extend(["--ignore".into(), "F841,F401".into()]);
+                        actual_args.extend(["--ignore".into(), "F841,F401,F821".into()]);
                     }
                     "pylint" => {
-                        actual_args.extend(["--disable=W0611,W0612".into()]);
+                        actual_args.extend(["--disable=W0611,W0612,E0602".into()]);
                     }
                     "flake8" => {
-                        actual_args.extend(["--extend-ignore=F841,F401".into()]);
+                        actual_args.extend(["--extend-ignore=F841,F401,F821".into()]);
                     }
                     _ => {} // mypy doesn't check unused vars
                 }
