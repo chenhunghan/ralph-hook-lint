@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -271,5 +272,106 @@ fn lenient_without_debug_produces_valid_output() {
         output.trim(),
         r#"{"continue":true}"#,
         "--lenient without --debug should produce clean JSON"
+    );
+}
+
+// ── Collect / lint-collected integration tests ──
+
+fn collect_temp_path(session_id: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("ralph-lint-{session_id}.txt"))
+}
+
+#[test]
+fn collect_records_file_path() {
+    let sid = format!("integ-collect-{}", std::process::id());
+    let _ = fs::remove_file(collect_temp_path(&sid));
+
+    let input = format!(
+        r#"{{"session_id":"{sid}","tool_name":"Edit","tool_input":{{"file_path":"/tmp/test.rs"}}}}"#,
+    );
+    let output = run_binary_with_args(&input, &["--collect"]);
+
+    assert_eq!(
+        output.trim(),
+        r#"{"continue":true}"#,
+        "collect mode should return continue, got: {output}"
+    );
+
+    // Verify the temp file was created with the path
+    let contents = fs::read_to_string(collect_temp_path(&sid)).unwrap();
+    assert!(
+        contents.contains("/tmp/test.rs"),
+        "temp file should contain the path, got: {contents}"
+    );
+
+    // Cleanup
+    let _ = fs::remove_file(collect_temp_path(&sid));
+}
+
+#[test]
+fn collect_deduplicates() {
+    let sid = format!("integ-dedup-{}", std::process::id());
+    let _ = fs::remove_file(collect_temp_path(&sid));
+
+    let input = format!(
+        r#"{{"session_id":"{sid}","tool_name":"Edit","tool_input":{{"file_path":"/tmp/dup.rs"}}}}"#,
+    );
+
+    // Record same path twice
+    run_binary_with_args(&input, &["--collect"]);
+    run_binary_with_args(&input, &["--collect"]);
+
+    let contents = fs::read_to_string(collect_temp_path(&sid)).unwrap();
+    let lines: Vec<&str> = contents.lines().collect();
+    assert_eq!(
+        lines.len(),
+        1,
+        "Should have exactly one entry after dedup, got: {lines:?}"
+    );
+
+    let _ = fs::remove_file(collect_temp_path(&sid));
+}
+
+#[test]
+fn lint_collected_no_files() {
+    // Use a fresh session_id with no collected files
+    let sid = format!("integ-empty-{}", std::process::id());
+    let _ = fs::remove_file(collect_temp_path(&sid));
+
+    let input = format!(r#"{{"session_id":"{sid}"}}"#);
+    let output = run_binary_with_args(&input, &["--lint-collected", "--debug"]);
+
+    assert!(
+        output.contains("no files collected") || output.contains(r#""continue":true"#),
+        "lint-collected with no files should continue, got: {output}"
+    );
+}
+
+#[test]
+fn lint_collected_cleans_up() {
+    let sid = format!("integ-cleanup-{}", std::process::id());
+    let _ = fs::remove_file(collect_temp_path(&sid));
+
+    // Collect a file that won't match any project (so lint just skips it)
+    let collect_input = format!(
+        r#"{{"session_id":"{sid}","tool_name":"Edit","tool_input":{{"file_path":"/tmp/no-project/fake.rs"}}}}"#,
+    );
+    run_binary_with_args(&collect_input, &["--collect"]);
+    assert!(
+        collect_temp_path(&sid).exists(),
+        "temp file should exist after collect"
+    );
+
+    // Now run lint-collected — should clean up the temp file
+    let lint_input = format!(r#"{{"session_id":"{sid}"}}"#);
+    let output = run_binary_with_args(&lint_input, &["--lint-collected"]);
+
+    assert!(
+        output.contains(r#""continue":true"#),
+        "lint-collected should continue for unsupported files, got: {output}"
+    );
+    assert!(
+        !collect_temp_path(&sid).exists(),
+        "temp file should be deleted after lint-collected"
     );
 }

@@ -1,7 +1,8 @@
-/// Extract `file_path` from JSON like `{"tool_input":{"file_path":"/some/path"}}`
-pub fn extract_file_path(json: &str) -> Option<String> {
-    let marker = r#""file_path":"#;
-    let start = json.find(marker)? + marker.len();
+/// Extract a JSON string field value by key name from raw JSON text.
+/// Searches for `"field_name":` and parses the quoted string value.
+fn extract_string_field(json: &str, field_name: &str) -> Option<String> {
+    let marker = format!(r#""{field_name}":"#);
+    let start = json.find(&marker)? + marker.len();
     let rest = &json[start..];
 
     // Skip whitespace
@@ -39,6 +40,21 @@ pub fn extract_file_path(json: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Extract `file_path` from JSON like `{"tool_input":{"file_path":"/some/path"}}`
+pub fn extract_file_path(json: &str) -> Option<String> {
+    extract_string_field(json, "file_path")
+}
+
+/// Extract `session_id` from JSON like `{"session_id":"abc123"}`
+pub fn extract_session_id(json: &str) -> Option<String> {
+    extract_string_field(json, "session_id")
+}
+
+/// Extract `reason` from a block JSON like `{"decision":"block","reason":"..."}`
+pub fn extract_reason_field(json: &str) -> Option<String> {
+    extract_string_field(json, "reason")
 }
 
 #[cfg(test)]
@@ -166,5 +182,38 @@ mod tests {
             extract_file_path(json),
             Some("/path/with\\xunknown".to_string())
         );
+    }
+
+    // Tests for extract_session_id
+
+    #[test]
+    fn basic_session_id() {
+        let json = r#"{"session_id":"abc-123-def"}"#;
+        assert_eq!(extract_session_id(json), Some("abc-123-def".to_string()));
+    }
+
+    #[test]
+    fn session_id_in_hook_input() {
+        let json =
+            r#"{"session_id":"sess42","tool_name":"Edit","tool_input":{"file_path":"/tmp/f.rs"}}"#;
+        assert_eq!(extract_session_id(json), Some("sess42".to_string()));
+    }
+
+    #[test]
+    fn session_id_missing() {
+        let json = r#"{"tool_name":"Edit"}"#;
+        assert_eq!(extract_session_id(json), None);
+    }
+
+    #[test]
+    fn session_id_empty() {
+        let json = r#"{"session_id":""}"#;
+        assert_eq!(extract_session_id(json), Some(String::new()));
+    }
+
+    #[test]
+    fn session_id_with_special_chars() {
+        let json = r#"{"session_id":"a\/b\\c\"d"}"#;
+        assert_eq!(extract_session_id(json), Some("a/b\\c\"d".to_string()));
     }
 }

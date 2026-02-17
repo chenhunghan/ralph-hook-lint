@@ -16,7 +16,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lenient"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --collect"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lint-collected --lenient"
           }
         ]
       }

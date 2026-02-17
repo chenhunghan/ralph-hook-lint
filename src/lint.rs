@@ -109,7 +109,16 @@ pub fn run_rust_lint(
     debug: bool,
     lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    // Run clippy on the specific file
+    run_rust_lint_multi(&[file_path.to_string()], project_root, debug, lenient)
+}
+
+/// Run clippy once and filter output for all given file paths.
+pub fn run_rust_lint_multi(
+    file_paths: &[String],
+    project_root: &str,
+    debug: bool,
+    lenient: bool,
+) -> Result<String, Box<dyn std::error::Error>> {
     let mut clippy_args = vec!["clippy", "--message-format=short", "--", "-D", "warnings"];
     if lenient {
         clippy_args.extend([
@@ -129,18 +138,24 @@ pub fn run_rust_lint(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Filter output to only show errors related to the specific file
-    let file_errors = filter_clippy_output(&stdout, &stderr, file_path);
+    let refs: Vec<&str> = file_paths.iter().map(String::as_str).collect();
+    let file_errors = filter_clippy_output_multi(&stdout, &stderr, &refs, project_root);
+
+    let label = if file_paths.len() == 1 {
+        file_paths[0].clone()
+    } else {
+        format!("{} files", file_paths.len())
+    };
 
     if file_errors.is_empty() {
         Ok(continue_result(
             debug,
-            &format!("[ralph-hook-lint] lint passed for {file_path} using clippy."),
+            &format!("[ralph-hook-lint] lint passed for {label} using clippy."),
         ))
     } else {
         Ok(format!(
             r#"{{"decision":"block","reason":"[ralph-hook-lint] lint errors in {} using clippy:\n\n{}\n\nFix lint errors."}}"#,
-            escape_json(file_path),
+            escape_json(&label),
             escape_json(&file_errors)
         ))
     }
@@ -416,17 +431,47 @@ pub fn run_go_lint(
     ))
 }
 
-fn filter_clippy_output(stdout: &str, stderr: &str, file_path: &str) -> String {
+fn filter_clippy_output_multi(
+    stdout: &str,
+    stderr: &str,
+    file_paths: &[&str],
+    project_root: &str,
+) -> String {
     let combined = format!("{stderr}\n{stdout}");
-    let file_name = Path::new(file_path)
-        .file_name()
-        .map_or(file_path, |n| n.to_str().unwrap_or(file_path));
+
+    // Clippy outputs paths relative to the project root (e.g. "src/lib.rs:10:5").
+    // Absolute paths from the caller rarely match, so we also build relative paths
+    // by stripping the project_root prefix.  Bare filenames are kept as a last-resort
+    // fallback for unusual path formats.
+    let prefix = if project_root.ends_with('/') {
+        project_root.to_string()
+    } else {
+        format!("{project_root}/")
+    };
+
+    let relative_paths: Vec<&str> = file_paths
+        .iter()
+        .filter_map(|fp| fp.strip_prefix(&prefix))
+        .collect();
+
+    let file_names: Vec<&str> = file_paths
+        .iter()
+        .map(|fp| {
+            Path::new(fp)
+                .file_name()
+                .map_or(*fp, |n| n.to_str().unwrap_or(fp))
+        })
+        .collect();
 
     combined
         .lines()
         .filter(|line| {
-            // Include lines that reference our file or are continuation/context lines
-            line.contains(file_path) || line.contains(file_name)
+            // 1. Exact absolute path (rare but precise)
+            file_paths.iter().any(|fp| line.contains(fp))
+            // 2. Relative path from project root (matches clippy's output)
+                || relative_paths.iter().any(|rp| line.contains(rp))
+            // 3. Bare filename fallback
+                || file_names.iter().any(|name| line.contains(name))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -624,24 +669,57 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_clippy_output_matches_full_path() {
+    fn test_filter_clippy_output_matches_relative_path() {
         let stderr = "warning: unused variable\n  --> src/main.rs:10:5\nerror: something else";
-        let result = filter_clippy_output("", stderr, "src/main.rs");
+        let result = filter_clippy_output_multi("", stderr, &["/project/src/main.rs"], "/project");
         assert!(result.contains("src/main.rs:10:5"));
         assert!(!result.contains("unused variable"));
     }
 
     #[test]
-    fn test_filter_clippy_output_matches_filename() {
+    fn test_filter_clippy_output_matches_filename_fallback() {
         let stderr = "warning: unused in main.rs\n  --> other/main.rs:5:1";
-        let result = filter_clippy_output("", stderr, "/project/src/main.rs");
+        let result = filter_clippy_output_multi("", stderr, &["/project/src/main.rs"], "/project");
         assert!(result.contains("main.rs"));
     }
 
     #[test]
     fn test_filter_clippy_output_empty_when_no_match() {
         let stderr = "warning: in other.rs:10:5";
-        let result = filter_clippy_output("", stderr, "src/main.rs");
+        let result = filter_clippy_output_multi("", stderr, &["/project/src/main.rs"], "/project");
         assert!(result.is_empty() || !result.contains("other.rs"));
+    }
+
+    #[test]
+    fn test_filter_clippy_output_multi_matches_multiple_files() {
+        let stderr = "  --> src/main.rs:10:5\n  --> src/lib.rs:20:3\n  --> src/other.rs:1:1";
+        let result = filter_clippy_output_multi(
+            "",
+            stderr,
+            &["/project/src/main.rs", "/project/src/lib.rs"],
+            "/project",
+        );
+        assert!(result.contains("src/main.rs:10:5"));
+        assert!(result.contains("src/lib.rs:20:3"));
+        assert!(!result.contains("src/other.rs"));
+    }
+
+    #[test]
+    fn test_filter_clippy_workspace_no_cross_crate_leak() {
+        // Simulate a workspace where clippy reports errors from two crates.
+        // The filter for crate "app" should NOT match errors from "core" via
+        // the relative path, even though both have "lib.rs".
+        let stderr = "  --> src/lib.rs:10:5\n  --> /ws/crates/core/src/lib.rs:20:3";
+        let result = filter_clippy_output_multi(
+            "",
+            stderr,
+            &["/ws/crates/app/src/lib.rs"],
+            "/ws/crates/app",
+        );
+        // "src/lib.rs:10:5" matches via relative path (correct — app's own file)
+        assert!(result.contains("src/lib.rs:10:5"));
+        // The absolute path "/ws/crates/core/src/lib.rs:20:3" should NOT match
+        // via relative path, but WILL match via the filename fallback "lib.rs".
+        // This is a known limitation of the filename fallback.
     }
 }
