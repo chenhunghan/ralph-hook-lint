@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.9.0...ralph-hook-lint-v0.10.0) (2026-02-17)
+
+
+### Features
+
+* two-phase deferred linting with collect and lint-collected modes ([d561745](https://github.com/chenhunghan/ralph-hook-lint/commit/d56174509970787105f3e90e73cc02fc7c05636a))
+
 ## [0.9.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.8.0...ralph-hook-lint-v0.9.0) (2026-02-16)
 
 
