@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.10.0...ralph-hook-lint-v0.11.0) (2026-02-17)
+
+
+### Features
+
+* default to strict linting on Stop, lenient mode opt-in for Edit event ([3a872be](https://github.com/chenhunghan/ralph-hook-lint/commit/3a872becd5d99f9a97e5d288c782257d8d60c1d2))
+
 ## [0.10.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.9.0...ralph-hook-lint-v0.10.0) (2026-02-17)
 
 
