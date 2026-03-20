@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.11.0...ralph-hook-lint-v0.11.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* lint Go packages instead of individual files to prevent false positives ([ddb16e2](https://github.com/chenhunghan/ralph-hook-lint/commit/ddb16e234733c2a38879d5f2cefd1483cf9f2dcd))
+
 ## [0.11.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.10.0...ralph-hook-lint-v0.11.0) (2026-02-17)
 
 
