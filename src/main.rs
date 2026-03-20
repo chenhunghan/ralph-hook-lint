@@ -107,6 +107,9 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
     let mut rust_projects: HashMap<String, Vec<String>> = HashMap::new();
     // Track Java projects already linted to avoid redundant maven/gradle runs.
     let mut java_projects: HashSet<String> = HashSet::new();
+    // Track Go packages already linted to avoid redundant per-file runs
+    // (Go lints at the package/directory level, not per-file).
+    let mut go_packages: HashSet<String> = HashSet::new();
 
     for file_path in &paths {
         let Some(project) = find_project_root(file_path) else {
@@ -130,11 +133,30 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
                     &mut errors,
                 );
             }
+            Lang::Go => {
+                // Go lints at the package (directory) level. Deduplicate so we
+                // don't re-lint the same package for every changed file in it.
+                let pkg_key = format!(
+                    "{}:{}",
+                    project.root,
+                    std::path::Path::new(file_path.as_str())
+                        .parent()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_default()
+                );
+                if !go_packages.insert(pkg_key) {
+                    continue;
+                }
+                collect_lint_errors(
+                    run_go_lint(file_path, &project.root, debug, lenient),
+                    file_path,
+                    &mut errors,
+                );
+            }
             _ => {
                 let result = match project.lang {
                     Lang::JavaScript => run_js_lint(file_path, &project.root, debug, lenient),
                     Lang::Python => run_python_lint(file_path, &project.root, debug, lenient),
-                    Lang::Go => run_go_lint(file_path, &project.root, debug, lenient),
                     _ => unreachable!(),
                 };
                 collect_lint_errors(result, file_path, &mut errors);

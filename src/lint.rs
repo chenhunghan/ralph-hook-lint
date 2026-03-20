@@ -367,10 +367,15 @@ pub fn run_go_lint(
     debug: bool,
     lenient: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // Go compiles at the package level (all .go files in a directory together).
+    // Linting individual files causes false positives (undefined symbols from
+    // sibling files in the same package). Lint the package directory instead.
+    let pkg_dir = go_package_dir(file_path, project_root);
+
     // Try linters in order: golangci-lint (comprehensive), staticcheck, go vet
     let linters: &[(&str, &[&str])] = &[
-        ("golangci-lint", &["run", "--fast", "{{file}}"]),
-        ("staticcheck", &["{{file}}"]),
+        ("golangci-lint", &["run", "--fast", "{{pkg}}"]),
+        ("staticcheck", &["{{pkg}}"]),
     ];
 
     for (linter, args) in linters {
@@ -379,7 +384,7 @@ pub fn run_go_lint(
             if output.status.success() {
                 let mut actual_args: Vec<String> = args
                     .iter()
-                    .map(|a| a.replace("{{file}}", file_path))
+                    .map(|a| a.replace("{{pkg}}", &pkg_dir))
                     .collect();
 
                 if lenient && *linter == "golangci-lint" {
@@ -407,7 +412,7 @@ pub fn run_go_lint(
     if let Ok(output) = Command::new("which").arg("go").output() {
         if output.status.success() {
             let output = Command::new("go")
-                .args(["vet", file_path])
+                .args(["vet", &pkg_dir])
                 .current_dir(project_root)
                 .output()?;
 
@@ -429,6 +434,27 @@ pub fn run_go_lint(
             "[ralph-hook-lint] no Go linter found for {file_path}. Install golangci-lint for best results: https://golangci-lint.run"
         ),
     ))
+}
+
+/// Derive the Go package import path (relative to project root) from a file path.
+/// Returns a `./`-prefixed directory suitable for `go vet`, `staticcheck`, etc.
+/// e.g. `/home/user/project/cmd/root.go` with root `/home/user/project` → `./cmd`
+fn go_package_dir(file_path: &str, project_root: &str) -> String {
+    let file = Path::new(file_path);
+    let root = Path::new(project_root);
+    file.parent()
+        .and_then(|p| p.strip_prefix(root).ok())
+        .map_or_else(
+            || "./...".to_string(),
+            |rel| {
+                let rel_str = rel.to_string_lossy();
+                if rel_str.is_empty() {
+                    ".".to_string()
+                } else {
+                    format!("./{rel_str}")
+                }
+            },
+        )
 }
 
 fn filter_clippy_output_multi(
@@ -721,5 +747,41 @@ mod tests {
         // The absolute path "/ws/crates/core/src/lib.rs:20:3" should NOT match
         // via relative path, but WILL match via the filename fallback "lib.rs".
         // This is a known limitation of the filename fallback.
+    }
+
+    #[test]
+    fn test_go_package_dir_subdir() {
+        assert_eq!(
+            go_package_dir("/home/user/project/cmd/root.go", "/home/user/project"),
+            "./cmd"
+        );
+    }
+
+    #[test]
+    fn test_go_package_dir_root() {
+        assert_eq!(
+            go_package_dir("/home/user/project/main.go", "/home/user/project"),
+            "."
+        );
+    }
+
+    #[test]
+    fn test_go_package_dir_nested() {
+        assert_eq!(
+            go_package_dir(
+                "/home/user/project/internal/api/handler.go",
+                "/home/user/project"
+            ),
+            "./internal/api"
+        );
+    }
+
+    #[test]
+    fn test_go_package_dir_fallback() {
+        // When file is not under project root, fall back to ./...
+        assert_eq!(
+            go_package_dir("/other/path/file.go", "/home/user/project"),
+            "./..."
+        );
     }
 }
