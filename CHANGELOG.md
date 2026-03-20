@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.12.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.11.1...ralph-hook-lint-v0.12.0) (2026-03-20)
+
+
+### Features
+
+* add --debug, disable by default ([e013083](https://github.com/chenhunghan/ralph-hook-lint/commit/e013083665c049503045e4ea3ca80f468e18b026))
+* add --lenient CLI flag to suppress unused-vars lint rules ([f312cc5](https://github.com/chenhunghan/ralph-hook-lint/commit/f312cc5a167537064fd4e094b455090827afd0b2))
+* add support for go ([b68bab6](https://github.com/chenhunghan/ralph-hook-lint/commit/b68bab63a14d0498de80e5d1dd9a32d14493ff23))
+* auto update on session start ([1352cbc](https://github.com/chenhunghan/ralph-hook-lint/commit/1352cbc33bee19a1b7fca5d4a02726edf9ed2364))
+* default to strict linting on Stop, lenient mode opt-in for Edit event ([3a872be](https://github.com/chenhunghan/ralph-hook-lint/commit/3a872becd5d99f9a97e5d288c782257d8d60c1d2))
+* init ([92c929f](https://github.com/chenhunghan/ralph-hook-lint/commit/92c929f17398eaa1f68e3132fa8c1c3780a9fc92))
+* support java linters ([b4b9200](https://github.com/chenhunghan/ralph-hook-lint/commit/b4b92009148e9baee612ae630e14b6255877fa0e))
+* support python linters ([cefe362](https://github.com/chenhunghan/ralph-hook-lint/commit/cefe362ffa2640c0ce622c321799ba8bb21a675d))
+* support rust/clippy ([50281f9](https://github.com/chenhunghan/ralph-hook-lint/commit/50281f9c4bc264fde82dad7aaf0dd2d07b26a66d))
+* suppress undefined/not-defined rules in lenient mode ([675fb0f](https://github.com/chenhunghan/ralph-hook-lint/commit/675fb0fc2998532e92b509904c8fbb4d0e589b3b))
+* two-phase deferred linting with collect and lint-collected modes ([d561745](https://github.com/chenhunghan/ralph-hook-lint/commit/d56174509970787105f3e90e73cc02fc7c05636a))
+
+
+### Bug Fixes
+
+* add execute permission to setup.sh ([65a190f](https://github.com/chenhunghan/ralph-hook-lint/commit/65a190f69cab3abc26b2e657d9cea867a34e7e23))
+* apply rustfmt formatting to lint.rs ([27b07a1](https://github.com/chenhunghan/ralph-hook-lint/commit/27b07a14c2b111accb11a620bbb818a16a787958))
+* consistent lowercase after the [ralph-hook-lint] prefix ([7793056](https://github.com/chenhunghan/ralph-hook-lint/commit/77930561fef745f2fa6b0f344dcb8e5aebbeb360))
+* **doc:** fix plugin instaltion cmd ([fb0b564](https://github.com/chenhunghan/ralph-hook-lint/commit/fb0b5643218200f9382ad92bad7627946823f856))
+* fix auto update by adding argument ([f57f7ad](https://github.com/chenhunghan/ralph-hook-lint/commit/f57f7ad6bac4a28e2e9ffceeb37c4c750154f83a))
+* fix ci checks ([4a2bc72](https://github.com/chenhunghan/ralph-hook-lint/commit/4a2bc72a67ca01c93afcf1b559dd23e937535ac9))
+* fix format ([2a03bb7](https://github.com/chenhunghan/ralph-hook-lint/commit/2a03bb70892c801e385043c17d65102cfd57a759))
+* fix format ([d5b10c8](https://github.com/chenhunghan/ralph-hook-lint/commit/d5b10c8e1d5847f24862e9e4c3904270d3e6b55b))
+* fix hook event name in hooks/hooks.json ([824c808](https://github.com/chenhunghan/ralph-hook-lint/commit/824c80871e0bb377886138e94df87a933cd5bc67))
+* fix intel mac build ci ([d954888](https://github.com/chenhunghan/ralph-hook-lint/commit/d9548885a982c8a699a6087171f197ae1df55cbb))
+* fix pacakge name is setup.sh ([457574e](https://github.com/chenhunghan/ralph-hook-lint/commit/457574eb8fbab2e294a22d4fd8cbd96a29a9a7a3))
+* lint Go packages instead of individual files to prevent false positives ([ddb16e2](https://github.com/chenhunghan/ralph-hook-lint/commit/ddb16e234733c2a38879d5f2cefd1483cf9f2dcd))
+* remove matcher ([c540728](https://github.com/chenhunghan/ralph-hook-lint/commit/c540728864234c177abb98431f0f2c2698000cb0))
+* rename binary to pacakge name ([bee39f4](https://github.com/chenhunghan/ralph-hook-lint/commit/bee39f48de2d355d732b8cdf2b7d3263c1062354))
+* set up ci ([f61ac46](https://github.com/chenhunghan/ralph-hook-lint/commit/f61ac469d4a93e37a2b98f68f472bcd7c87f8977))
+* update binary name in Makefile to match package name ([1f2ccb8](https://github.com/chenhunghan/ralph-hook-lint/commit/1f2ccb8f4b1a2707a0917fe3ba51f26b08360fac))
+
 ## [0.11.1](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.11.0...ralph-hook-lint-v0.11.1) (2026-03-20)
 
 
