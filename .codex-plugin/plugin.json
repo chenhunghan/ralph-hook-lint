@@ -17,7 +17,6 @@
     "claude",
     "eslint"
   ],
-  "skills": "./skills/",
   "interface": {
     "displayName": "Ralph Hook Lint",
     "shortDescription": "Lint files changed in the current turn.",

@@ -41,7 +41,7 @@ Codex local plugin publishing is still marketplace-file based, so the install fl
 1. Clone this repo somewhere stable.
 2. Add a local Codex marketplace entry that points at that clone.
 3. Install the plugin from the Codex plugin directory.
-4. In the target repo, ask Codex to use `install-codex-hooks`, or run:
+4. In the target repo, run:
 
 ```bash
 python3 /path/to/ralph-hook-lint/scripts/install_codex_hooks.py
