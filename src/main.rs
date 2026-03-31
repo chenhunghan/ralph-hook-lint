@@ -114,15 +114,10 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
         ));
     }
 
-    lint_paths(&paths, debug, lenient, "collected file(s)")
+    Ok(lint_paths(&paths, debug, lenient, "collected file(s)"))
 }
 
-fn lint_paths(
-    paths: &[String],
-    debug: bool,
-    lenient: bool,
-    success_scope: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
+fn lint_paths(paths: &[String], debug: bool, lenient: bool, success_scope: &str) -> String {
     let mut errors: Vec<String> = Vec::new();
     // Group Rust files by project root so clippy runs once and filters for all files.
     let mut rust_projects: HashMap<String, Vec<String>> = HashMap::new();
@@ -195,20 +190,20 @@ fn lint_paths(
     }
 
     if errors.is_empty() {
-        Ok(continue_result(
+        continue_result(
             debug,
             &format!(
                 "[ralph-hook-lint] all {} {} passed lint.",
                 paths.len(),
                 success_scope
             ),
-        ))
+        )
     } else {
         let combined = errors.join("\n\n---\n\n");
-        Ok(format!(
+        format!(
             r#"{{"decision":"block","reason":"{}"}}"#,
             escape_json(&combined)
-        ))
+        )
     }
 }
 
@@ -308,7 +303,7 @@ fn run_lint_turn(debug: bool, lenient: bool) -> Result<String, Box<dyn std::erro
         ));
     }
 
-    let lint_result = lint_paths(&changed_files, debug, lenient, "changed file(s)")?;
+    let lint_result = lint_paths(&changed_files, debug, lenient, "changed file(s)");
     if !lint_result.contains(r#""decision":"block""#) {
         cleanup_snapshot(&session_id, &turn_id)?;
         return Ok(lint_result);
