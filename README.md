@@ -41,17 +41,56 @@ Codex local plugin publishing is still marketplace-file based, so the install fl
 1. Clone this repo somewhere stable.
 2. Add a local Codex marketplace entry that points at that clone.
 3. Install the plugin from the Codex plugin directory.
-4. In the target repo, run:
+4. Enable hooks manually by adding this to `~/.codex/config.toml`:
 
-```bash
-python3 /path/to/ralph-hook-lint/scripts/install_codex_hooks.py
+```toml
+[features]
+codex_hooks = true
 ```
 
-The installer:
+5. In the target repo, create `<repo>/.codex/hooks.json`:
 
-- enables `codex_hooks = true` in `~/.codex/config.toml`
-- creates or updates `<repo>/.codex/hooks.json`
-- preserves unrelated hooks
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/ralph-hook-lint/scripts/setup.sh ralph-hook-lint",
+            "statusMessage": "Updating ralph-hook-lint"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/ralph-hook-lint/bin/ralph-hook-lint --snapshot-turn"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/ralph-hook-lint/bin/ralph-hook-lint --lint-turn",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Replace `/path/to/ralph-hook-lint` with the absolute path to your local clone.
 
 Example personal marketplace entry:
 
@@ -89,9 +128,9 @@ claude plugin update ralph-hook-lint@ralph-hook-lint
 
 ### Codex
 
-Once Codex hooks are installed, `SessionStart` runs [`scripts/setup.sh`](./scripts/setup.sh), which keeps the downloaded binary under the installed plugin directory up to date automatically.
+Once Codex hooks are configured, `SessionStart` runs [`scripts/setup.sh`](./scripts/setup.sh), which keeps the downloaded binary under the installed plugin directory up to date automatically.
 
-If you move the plugin clone or reinstall it from a different marketplace path, rerun the Codex installer so repo-local hooks point at the right plugin location again.
+If you move the plugin clone or reinstall it from a different marketplace path, update `<repo>/.codex/hooks.json` so the commands point at the right plugin location again.
 
 ## How It Works
 
@@ -138,7 +177,7 @@ To run lint on every edit with lenient mode, change `hooks.json` to:
 
 This gives more immediate feedback but may block parallel editing.
 
-For Codex, you can get the same behavior by editing the generated `<repo>/.codex/hooks.json` and appending `--lenient` to the `--lint-turn` command.
+For Codex, you can get the same behavior by editing `<repo>/.codex/hooks.json` and appending `--lenient` to the `--lint-turn` command.
 
 ## Debug Mode
 
@@ -148,8 +187,4 @@ By default, the hook only outputs `systemMessage` when blocking (lint errors fou
 "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lint-collected --debug"
 ```
 
-For Codex, rerun the installer with `--debug`:
-
-```bash
-python3 /path/to/ralph-hook-lint/scripts/install_codex_hooks.py --debug
-```
+For Codex, edit `<repo>/.codex/hooks.json` and append `--debug` to both the `--snapshot-turn` and `--lint-turn` commands.

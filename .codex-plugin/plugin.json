@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Ralph Hook Lint",
     "shortDescription": "Lint files changed in the current turn.",
-    "longDescription": "Reuses the same Rust binary for Claude Code and Codex, with a Codex installer skill that writes repo-local hooks and keeps the downloaded binary up to date on session start.",
+    "longDescription": "Reuses the same Rust binary for Claude Code and Codex, with manual repo-local hook setup and automatic binary refresh on session start.",
     "developerName": "Hung-Han Chen",
     "category": "Productivity",
     "capabilities": [
