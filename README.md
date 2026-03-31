@@ -78,8 +78,6 @@ Example personal marketplace entry:
 }
 ```
 
-If you are testing from this plugin repo directly, there is also a repo-local marketplace file at [`.agents/plugins/marketplace.json`](./.agents/plugins/marketplace.json).
-
 ## Update Plugin
 
 ### Claude Code
