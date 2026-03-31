@@ -36,12 +36,18 @@ claude plugin install ralph-hook-lint
 
 ### Codex
 
-Codex local plugin publishing is still marketplace-file based, so the install flow is:
+Codex local plugin publishing is still marketplace-file based. As of today, the docs describe marketplace-based installation and plugin caching, but do not document a `codex plugin install` CLI command. The install flow is:
 
 1. Clone this repo somewhere stable.
 2. Add a local Codex marketplace entry that points at that clone.
-3. Install the plugin from the Codex plugin directory.
-4. Enable hooks manually by adding this to `~/.codex/config.toml`:
+3. Enable or install the plugin from that marketplace in the Codex app.
+4. Enable hooks:
+
+```bash
+codex features enable codex_hooks
+```
+
+This is equivalent to setting the following in `~/.codex/config.toml`:
 
 ```toml
 [features]
