@@ -36,7 +36,35 @@ claude plugin install ralph-hook-lint
 
 ### Codex
 
-Codex local plugin publishing is still marketplace-file based. As of today, the docs describe marketplace-based installation and plugin caching, but do not document a `codex plugin install` CLI command. The install flow is:
+Codex local plugin publishing is still marketplace-file based. As of today, the docs describe marketplace-based installation and plugin caching, but do not document a `codex plugin install` CLI command.
+
+The easiest path is the bootstrap script, which clones or updates the plugin under `~/.codex/plugins/ralph-hook-lint`, adds a local marketplace entry, enables `codex_hooks`, and writes repo-local hooks:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chenhunghan/ralph-hook-lint/main/scripts/install_codex.sh | bash
+```
+
+Target a different repo or turn on verbose hook diagnostics:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chenhunghan/ralph-hook-lint/main/scripts/install_codex.sh | bash -s -- --repo /absolute/path/to/repo --debug
+```
+
+If you already cloned this repo locally, run the script directly instead:
+
+```bash
+bash scripts/install_codex.sh --repo /absolute/path/to/repo
+```
+
+After the script finishes:
+
+1. Restart Codex if this is your first plugin or hook install.
+2. In the Codex app, open the Plugin Directory and enable/install `ralph-hook-lint` from your local marketplace if you want it visible there.
+3. Open the target repo in Codex. The repo-local hooks are already configured.
+
+### Codex Manual Fallback
+
+If you prefer to wire everything up by hand, the equivalent flow is:
 
 1. Clone this repo somewhere stable.
 2. Add a local Codex marketplace entry that points at that clone.
