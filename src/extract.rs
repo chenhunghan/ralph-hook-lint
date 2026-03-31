@@ -42,14 +42,44 @@ fn extract_string_field(json: &str, field_name: &str) -> Option<String> {
     None
 }
 
+/// Extract a JSON boolean field value by key name from raw JSON text.
+fn extract_bool_field(json: &str, field_name: &str) -> Option<bool> {
+    let marker = format!(r#""{field_name}":"#);
+    let start = json.find(&marker)? + marker.len();
+    let rest = json[start..].trim_start();
+
+    if rest.starts_with("true") {
+        Some(true)
+    } else if rest.starts_with("false") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
 /// Extract `file_path` from JSON like `{"tool_input":{"file_path":"/some/path"}}`
 pub fn extract_file_path(json: &str) -> Option<String> {
     extract_string_field(json, "file_path")
 }
 
+/// Extract `cwd` from JSON like `{"cwd":"/some/path"}`
+pub fn extract_cwd(json: &str) -> Option<String> {
+    extract_string_field(json, "cwd")
+}
+
 /// Extract `session_id` from JSON like `{"session_id":"abc123"}`
 pub fn extract_session_id(json: &str) -> Option<String> {
     extract_string_field(json, "session_id")
+}
+
+/// Extract `turn_id` from JSON like `{"turn_id":"turn-123"}`
+pub fn extract_turn_id(json: &str) -> Option<String> {
+    extract_string_field(json, "turn_id")
+}
+
+/// Extract `stop_hook_active` from JSON like `{"stop_hook_active":false}`
+pub fn extract_stop_hook_active(json: &str) -> Option<bool> {
+    extract_bool_field(json, "stop_hook_active")
 }
 
 /// Extract `reason` from a block JSON like `{"decision":"block","reason":"..."}`
@@ -184,6 +214,12 @@ mod tests {
         );
     }
 
+    #[test]
+    fn extract_cwd_field() {
+        let json = r#"{"cwd":"/Users/test/project","hook_event_name":"Stop"}"#;
+        assert_eq!(extract_cwd(json), Some("/Users/test/project".to_string()));
+    }
+
     // Tests for extract_session_id
 
     #[test]
@@ -215,5 +251,23 @@ mod tests {
     fn session_id_with_special_chars() {
         let json = r#"{"session_id":"a\/b\\c\"d"}"#;
         assert_eq!(extract_session_id(json), Some("a/b\\c\"d".to_string()));
+    }
+
+    #[test]
+    fn extract_turn_id_field() {
+        let json = r#"{"turn_id":"turn-42","hook_event_name":"UserPromptSubmit"}"#;
+        assert_eq!(extract_turn_id(json), Some("turn-42".to_string()));
+    }
+
+    #[test]
+    fn extract_stop_hook_active_true() {
+        let json = r#"{"stop_hook_active":true,"hook_event_name":"Stop"}"#;
+        assert_eq!(extract_stop_hook_active(json), Some(true));
+    }
+
+    #[test]
+    fn extract_stop_hook_active_false() {
+        let json = r#"{"stop_hook_active":false,"hook_event_name":"Stop"}"#;
+        assert_eq!(extract_stop_hook_active(json), Some(false));
     }
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$(dirname "$0")")}"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-$(dirname "$(dirname "$0")")}}"
 BIN_DIR="${PLUGIN_ROOT}/bin"
 BINARY_NAME="ralph-hook-lint"
 REPO="chenhunghan/ralph-hook-lint"
