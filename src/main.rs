@@ -2,17 +2,23 @@ mod collect;
 mod extract;
 mod lint;
 mod project;
+mod snapshot;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::io::{self, Read};
 
-use extract::{extract_file_path, extract_session_id};
+use extract::{
+    extract_cwd, extract_file_path, extract_session_id, extract_stop_hook_active, extract_turn_id,
+};
 use lint::{
     continue_result, escape_json, run_go_lint, run_java_lint, run_js_lint, run_python_lint,
     run_rust_lint, run_rust_lint_multi,
 };
 use project::{Lang, find_project_root};
+use snapshot::{
+    cleanup_snapshot, diff_changed_files, read_snapshot, scan_supported_files, write_snapshot,
+};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,11 +33,17 @@ fn main() {
     let lenient = args.iter().any(|a| a == "--lenient");
     let collect_mode = args.iter().any(|a| a == "--collect");
     let lint_collected_mode = args.iter().any(|a| a == "--lint-collected");
+    let snapshot_turn_mode = args.iter().any(|a| a == "--snapshot-turn");
+    let lint_turn_mode = args.iter().any(|a| a == "--lint-turn");
 
     let result = if collect_mode {
         run_collect(debug)
     } else if lint_collected_mode {
         run_lint_collected(debug, lenient)
+    } else if snapshot_turn_mode {
+        run_snapshot_turn(debug)
+    } else if lint_turn_mode {
+        run_lint_turn(debug, lenient)
     } else {
         run(debug, lenient)
     };
@@ -102,6 +114,10 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
         ));
     }
 
+    Ok(lint_paths(&paths, debug, lenient, "collected file(s)"))
+}
+
+fn lint_paths(paths: &[String], debug: bool, lenient: bool, success_scope: &str) -> String {
     let mut errors: Vec<String> = Vec::new();
     // Group Rust files by project root so clippy runs once and filters for all files.
     let mut rust_projects: HashMap<String, Vec<String>> = HashMap::new();
@@ -111,7 +127,7 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
     // (Go lints at the package/directory level, not per-file).
     let mut go_packages: HashSet<String> = HashSet::new();
 
-    for file_path in &paths {
+    for file_path in paths {
         let Some(project) = find_project_root(file_path) else {
             continue;
         };
@@ -174,20 +190,134 @@ fn run_lint_collected(debug: bool, lenient: bool) -> Result<String, Box<dyn std:
     }
 
     if errors.is_empty() {
-        Ok(continue_result(
+        continue_result(
             debug,
             &format!(
-                "[ralph-hook-lint] all {} collected file(s) passed lint.",
-                paths.len()
+                "[ralph-hook-lint] all {} {} passed lint.",
+                paths.len(),
+                success_scope
             ),
-        ))
+        )
     } else {
         let combined = errors.join("\n\n---\n\n");
-        Ok(format!(
+        format!(
             r#"{{"decision":"block","reason":"{}"}}"#,
             escape_json(&combined)
-        ))
+        )
     }
+}
+
+fn run_snapshot_turn(debug: bool) -> Result<String, Box<dyn std::error::Error>> {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    let session_id = match extract_session_id(&input) {
+        Some(sid) if !sid.is_empty() => sid,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no session_id, skipping turn snapshot.",
+            ));
+        }
+    };
+
+    let turn_id = match extract_turn_id(&input) {
+        Some(turn_id) if !turn_id.is_empty() => turn_id,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no turn_id, skipping turn snapshot.",
+            ));
+        }
+    };
+
+    let cwd = match extract_cwd(&input) {
+        Some(cwd) if !cwd.is_empty() => cwd,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no cwd, skipping turn snapshot.",
+            ));
+        }
+    };
+
+    let count = write_snapshot(&session_id, &turn_id, &cwd)?;
+    Ok(continue_result(
+        debug,
+        &format!("[ralph-hook-lint] captured baseline for {count} file(s)."),
+    ))
+}
+
+fn run_lint_turn(debug: bool, lenient: bool) -> Result<String, Box<dyn std::error::Error>> {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    let session_id = match extract_session_id(&input) {
+        Some(sid) if !sid.is_empty() => sid,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no session_id, skipping turn lint.",
+            ));
+        }
+    };
+
+    let turn_id = match extract_turn_id(&input) {
+        Some(turn_id) if !turn_id.is_empty() => turn_id,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no turn_id, skipping turn lint.",
+            ));
+        }
+    };
+
+    let cwd = match extract_cwd(&input) {
+        Some(cwd) if !cwd.is_empty() => cwd,
+        _ => {
+            return Ok(continue_result(
+                debug,
+                "[ralph-hook-lint] no cwd, skipping turn lint.",
+            ));
+        }
+    };
+
+    let stop_hook_active = extract_stop_hook_active(&input).unwrap_or(false);
+    let baseline = read_snapshot(&session_id, &turn_id)?;
+
+    if baseline.is_empty() {
+        return Ok(continue_result(
+            debug,
+            "[ralph-hook-lint] no turn snapshot found, skipping turn lint.",
+        ));
+    }
+
+    let current = scan_supported_files(&cwd)?;
+    let changed_files = diff_changed_files(&baseline, &current);
+
+    if changed_files.is_empty() {
+        cleanup_snapshot(&session_id, &turn_id)?;
+        return Ok(continue_result(
+            debug,
+            "[ralph-hook-lint] no supported files changed this turn.",
+        ));
+    }
+
+    let lint_result = lint_paths(&changed_files, debug, lenient, "changed file(s)");
+    if !lint_result.contains(r#""decision":"block""#) {
+        cleanup_snapshot(&session_id, &turn_id)?;
+        return Ok(lint_result);
+    }
+
+    if stop_hook_active {
+        cleanup_snapshot(&session_id, &turn_id)?;
+        return Ok(
+            r#"{"continue":true,"systemMessage":"[ralph-hook-lint] lint still failing after one Stop continuation; skipping a second auto-continue to avoid a loop."}"#
+                .to_string(),
+        );
+    }
+
+    Ok(lint_result)
 }
 
 /// Push the reason from a block result into the errors vec, or ignore continues.

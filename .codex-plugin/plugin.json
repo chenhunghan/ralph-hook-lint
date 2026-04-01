@@ -1,0 +1,38 @@
+{
+  "name": "ralph-hook-lint",
+  "version": "0.12.0",
+  "description": "Zero-dependency lint hook for Claude Code and Codex.",
+  "author": {
+    "name": "Hung-Han Chen",
+    "email": "chenhungh@gmail.com",
+    "url": "https://github.com/chenhunghan"
+  },
+  "homepage": "https://github.com/chenhunghan/ralph-hook-lint#readme",
+  "repository": "https://github.com/chenhunghan/ralph-hook-lint",
+  "license": "MIT",
+  "keywords": [
+    "lint",
+    "hooks",
+    "codex",
+    "claude",
+    "eslint"
+  ],
+  "interface": {
+    "displayName": "Ralph Hook Lint",
+    "shortDescription": "Lint files changed in the current turn.",
+    "longDescription": "Reuses the same Rust binary for Claude Code and Codex, with manual repo-local hook setup and automatic binary refresh on session start.",
+    "developerName": "Hung-Han Chen",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/chenhunghan/ralph-hook-lint",
+    "defaultPrompt": [
+      "Install ralph-hook-lint hooks for this repo.",
+      "Update ralph-hook-lint Codex hooks here.",
+      "Explain how ralph-hook-lint works in Codex."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

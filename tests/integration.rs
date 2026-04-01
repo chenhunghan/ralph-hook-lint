@@ -281,6 +281,10 @@ fn collect_temp_path(session_id: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("ralph-lint-{session_id}.txt"))
 }
 
+fn turn_snapshot_temp_path(session_id: &str, turn_id: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("ralph-lint-turn-{session_id}-{turn_id}.txt"))
+}
+
 #[test]
 fn collect_records_file_path() {
     let sid = format!("integ-collect-{}", std::process::id());
@@ -374,4 +378,83 @@ fn lint_collected_cleans_up() {
         !collect_temp_path(&sid).exists(),
         "temp file should be deleted after lint-collected"
     );
+}
+
+#[test]
+fn snapshot_turn_then_lint_turn_without_changes_cleans_up() {
+    let fixture_dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ts/nested/subproject");
+    let session_id = format!("turn-session-{}", std::process::id());
+    let turn_id = "turn-no-changes";
+    let snapshot_path = turn_snapshot_temp_path(&session_id, turn_id);
+    let _ = fs::remove_file(&snapshot_path);
+
+    let snapshot_input = format!(
+        r#"{{"session_id":"{session_id}","turn_id":"{turn_id}","cwd":"{}","hook_event_name":"UserPromptSubmit"}}"#,
+        fixture_dir.display()
+    );
+    let snapshot_output = run_binary_with_args(&snapshot_input, &["--snapshot-turn", "--debug"]);
+    assert!(
+        snapshot_output.contains("captured baseline"),
+        "expected snapshot debug output, got: {snapshot_output}"
+    );
+    assert!(snapshot_path.exists(), "snapshot file should be created");
+
+    let lint_input = format!(
+        r#"{{"session_id":"{session_id}","turn_id":"{turn_id}","cwd":"{}","hook_event_name":"Stop","stop_hook_active":false}}"#,
+        fixture_dir.display()
+    );
+    let lint_output = run_binary_with_args(&lint_input, &["--lint-turn", "--debug"]);
+    assert!(
+        lint_output.contains("no supported files changed this turn"),
+        "expected no-change message, got: {lint_output}"
+    );
+    assert!(
+        !snapshot_path.exists(),
+        "snapshot file should be cleaned up"
+    );
+}
+
+#[test]
+fn snapshot_turn_then_lint_turn_detects_changed_files() {
+    let temp_root =
+        std::env::temp_dir().join(format!("ralph-hook-lint-codex-turn-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&temp_root);
+    fs::create_dir_all(temp_root.join("src")).unwrap();
+    fs::write(
+        temp_root.join("package.json"),
+        "{\n  \"name\": \"fixture\"\n}\n",
+    )
+    .unwrap();
+    let file_path = temp_root.join("src/index.ts");
+    fs::write(&file_path, "export const value = 1;\n").unwrap();
+
+    let session_id = format!("turn-session-changed-{}", std::process::id());
+    let turn_id = "turn-changed";
+    let snapshot_path = turn_snapshot_temp_path(&session_id, turn_id);
+    let _ = fs::remove_file(&snapshot_path);
+
+    let snapshot_input = format!(
+        r#"{{"session_id":"{session_id}","turn_id":"{turn_id}","cwd":"{}","hook_event_name":"UserPromptSubmit"}}"#,
+        temp_root.display()
+    );
+    let _ = run_binary_with_args(&snapshot_input, &["--snapshot-turn"]);
+
+    fs::write(&file_path, "export const value = 2;\n").unwrap();
+
+    let lint_input = format!(
+        r#"{{"session_id":"{session_id}","turn_id":"{turn_id}","cwd":"{}","hook_event_name":"Stop","stop_hook_active":false}}"#,
+        temp_root.display()
+    );
+    let lint_output = run_binary_with_args(&lint_input, &["--lint-turn", "--debug"]);
+    assert!(
+        lint_output.contains("all 1 changed file(s) passed lint"),
+        "expected changed-file lint summary, got: {lint_output}"
+    );
+    assert!(
+        !snapshot_path.exists(),
+        "snapshot file should be cleaned up"
+    );
+
+    let _ = fs::remove_dir_all(temp_root);
 }
