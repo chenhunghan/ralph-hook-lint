@@ -262,15 +262,16 @@ pub fn run_java_lint(
     let gradle_kts_path = Path::new(project_root).join("build.gradle.kts");
 
     // Linters to try in order: pmd (fast), spotbugs (thorough)
+    // --batch-mode disables ANSI color output (the official Maven way).
     let maven_linters: &[(&str, &[&str], &str)] = &[
         (
             "pmd:check",
-            &["pmd:check", "-q"],
+            &["--batch-mode", "pmd:check", "-q"],
             "No plugin found for prefix 'pmd'",
         ),
         (
             "spotbugs:check",
-            &["spotbugs:check", "-q"],
+            &["--batch-mode", "spotbugs:check", "-q"],
             "No plugin found for prefix 'spotbugs'",
         ),
     ];
@@ -322,7 +323,7 @@ pub fn run_java_lint(
 
         for (task, not_found_msg) in gradle_linters {
             let output = Command::new(gradle_cmd)
-                .args([*task, "-q"])
+                .args([*task, "--console=plain", "-q"])
                 .current_dir(project_root)
                 .output()?;
 
