@@ -1,6 +1,6 @@
 {
   "name": "ralph-hook-lint",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Zero-dependency lint hook for Claude Code and Codex.",
   "author": {
     "name": "Hung-Han Chen",

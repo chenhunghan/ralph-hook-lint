@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.12.0...ralph-hook-lint-v0.13.0) (2026-05-26)
+
+
+### Features
+
+* add Codex plugin and hook support ([a4c6acc](https://github.com/chenhunghan/ralph-hook-lint/commit/a4c6acceec2a883387b0b005ee71e736769b43b6))
+* switch Claude Stop hook to asyncRewake ([#20](https://github.com/chenhunghan/ralph-hook-lint/issues/20)) ([02dbe1c](https://github.com/chenhunghan/ralph-hook-lint/commit/02dbe1ccdbb4a2482b7056b0a0fd15c1072c9388))
+
 ## [0.12.0](https://github.com/chenhunghan/ralph-hook-lint/compare/ralph-hook-lint-v0.11.1...ralph-hook-lint-v0.12.0) (2026-03-20)
 
 
