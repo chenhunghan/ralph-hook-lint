@@ -16,6 +16,16 @@ fn run_binary_lenient(input: &str) -> String {
 }
 
 fn run_binary_with_args(input: &str, args: &[&str]) -> String {
+    run_binary_full(input, args).stdout
+}
+
+struct BinOutput {
+    stdout: String,
+    stderr: String,
+    exit_code: Option<i32>,
+}
+
+fn run_binary_full(input: &str, args: &[&str]) -> BinOutput {
     let binary = env!("CARGO_BIN_EXE_ralph-hook-lint");
     let mut child = Command::new(binary)
         .args(args)
@@ -33,7 +43,11 @@ fn run_binary_with_args(input: &str, args: &[&str]) -> String {
         .unwrap();
 
     let output = child.wait_with_output().expect("Failed to read output");
-    String::from_utf8_lossy(&output.stdout).to_string()
+    BinOutput {
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        exit_code: output.status.code(),
+    }
 }
 
 #[test]
@@ -343,11 +357,26 @@ fn lint_collected_no_files() {
     let _ = fs::remove_file(collect_temp_path(&sid));
 
     let input = format!(r#"{{"session_id":"{sid}"}}"#);
-    let output = run_binary_with_args(&input, &["--lint-collected", "--debug"]);
+    let output = run_binary_full(&input, &["--lint-collected", "--debug"]);
 
+    // asyncRewake protocol: pass exits 0 silent (stdout empty); debug routes the
+    // pass message to stderr.
+    assert_eq!(
+        output.exit_code,
+        Some(0),
+        "lint-collected with no files should exit 0, got: {:?} (stderr: {})",
+        output.exit_code,
+        output.stderr
+    );
     assert!(
-        output.contains("no files collected") || output.contains(r#""continue":true"#),
-        "lint-collected with no files should continue, got: {output}"
+        output.stdout.is_empty(),
+        "lint-collected pass should be silent on stdout, got: {}",
+        output.stdout
+    );
+    assert!(
+        output.stderr.contains("no files collected"),
+        "debug stderr should mention no files collected, got: {}",
+        output.stderr
     );
 }
 
@@ -366,13 +395,20 @@ fn lint_collected_cleans_up() {
         "temp file should exist after collect"
     );
 
-    // Now run lint-collected — should clean up the temp file
+    // Now run lint-collected — should pass (file has no project root) and clean up.
     let lint_input = format!(r#"{{"session_id":"{sid}"}}"#);
-    let output = run_binary_with_args(&lint_input, &["--lint-collected"]);
+    let output = run_binary_full(&lint_input, &["--lint-collected"]);
 
+    assert_eq!(
+        output.exit_code,
+        Some(0),
+        "lint-collected should exit 0 for unsupported files, got stderr: {}",
+        output.stderr
+    );
     assert!(
-        output.contains(r#""continue":true"#),
-        "lint-collected should continue for unsupported files, got: {output}"
+        output.stdout.is_empty(),
+        "lint-collected pass should be silent on stdout, got: {}",
+        output.stdout
     );
     assert!(
         !collect_temp_path(&sid).exists(),
