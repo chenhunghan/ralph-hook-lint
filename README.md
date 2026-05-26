@@ -29,6 +29,8 @@ If lint errors are found, the agent is prompted to fix them before wrapping up.
 
 ### Claude Code
 
+Requires Claude Code with `asyncRewake` hook support (released January 2026 or later).
+
 ```bash
 claude plugin marketplace add https://github.com/chenhunghan/ralph-hook-lint.git
 claude plugin install ralph-hook-lint
@@ -170,12 +172,14 @@ If you move the plugin clone or reinstall it from a different marketplace path, 
 
 ### Claude Code
 
-By default, Claude uses a **two-phase deferred linting** approach:
+By default, Claude uses a **two-phase background linting** approach:
 
 1. **Collect phase** (`PostToolUse`): After every `Write`/`Edit`, file paths are collected without running linters.
-2. **Lint phase** (`Stop`): When the agent finishes, all collected files are linted at once in strict mode.
+2. **Lint phase** (`Stop`, `asyncRewake`): When the agent finishes, lint runs in the background while the stop transition completes cleanly. On lint failure, Claude is woken with the diagnostics as a system reminder; on success, nothing is surfaced.
 
-This lets the agent work freely during editing and catches all lint errors before the turn ends.
+Because the `Stop` hook no longer blocks, the agent's in-flight reasoning isn't displaced by lint output — the wake-up arrives as additive context on top of the existing conversation, not as a replacement for the stop intent.
+
+The Stop hook has a 30-second timeout. Lint runs that exceed it are killed and silently dropped — slow linters won't surface stale wake-ups mid next turn.
 
 ### Codex
 
@@ -190,6 +194,8 @@ If Codex already continued once from a failing `Stop` hook, `ralph-hook-lint` wi
 ## Lenient Mode
 
 Disabled by default. The `--lenient` flag suppresses unused variable/import rules, which is useful when running lint on every `Edit` event instead of deferring to `Stop`. Intermediate edit states often have unused variables/imports that will be resolved in later edits.
+
+Note: with the default `asyncRewake` flow, strict-mode failures arrive as a non-blocking wake-up rather than a Stop block, so lenient is mostly relevant for the eager-on-edit `PostToolUse` setup below where lint runs synchronously after every edit.
 
 To run lint on every edit with lenient mode, change `hooks.json` to:
 
@@ -215,10 +221,12 @@ For Codex, you can get the same behavior by editing `<repo>/.codex/hooks.json` a
 
 ## Debug Mode
 
-By default, the hook only outputs `systemMessage` when blocking (lint errors found). To see all diagnostic messages, add `--debug` to the command in `hooks.json`:
+Add `--debug` to surface diagnostic messages for passing runs.
+
+For Claude Code (`asyncRewake` flow), pass diagnostics are written to the hook's stderr — visible when running the binary by hand, but not consumed by the agent (the agent only sees output when lint fails and the wake-up fires). Lint-failure diagnostics always reach the agent regardless of `--debug`.
 
 ```json
 "command": "${CLAUDE_PLUGIN_ROOT}/bin/ralph-hook-lint --lint-collected --debug"
 ```
 
-For Codex, edit `<repo>/.codex/hooks.json` and append `--debug` to both the `--snapshot-turn` and `--lint-turn` commands.
+For Codex, edit `<repo>/.codex/hooks.json` and append `--debug` to both the `--snapshot-turn` and `--lint-turn` commands. Codex uses the synchronous `decision:block` protocol, so `--debug` surfaces pass messages as `systemMessage` on stdout.

@@ -82,11 +82,6 @@ pub fn extract_stop_hook_active(json: &str) -> Option<bool> {
     extract_bool_field(json, "stop_hook_active")
 }
 
-/// Extract `reason` from a block JSON like `{"decision":"block","reason":"..."}`
-pub fn extract_reason_field(json: &str) -> Option<String> {
-    extract_string_field(json, "reason")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

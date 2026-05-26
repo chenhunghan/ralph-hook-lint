@@ -2,12 +2,28 @@ use std::fmt::Write;
 use std::path::Path;
 use std::process::Command;
 
+/// Result of running one or more linters.
+///
+/// Wire-protocol formatting lives outside this module — `Pass`/`Fail` here are
+/// content-only so the same outcome can be serialized as either a Codex-style
+/// `decision:block` JSON payload or an `asyncRewake` exit-2/stderr signal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LintOutcome {
+    Pass { message: String },
+    Fail { reason: String },
+}
+
+impl LintOutcome {
+    pub const fn is_fail(&self) -> bool {
+        matches!(self, Self::Fail { .. })
+    }
+}
+
 pub fn run_js_lint(
     file_path: &str,
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
     // Try linters in order: oxlint, biome, eslint
     let linters: &[(&str, &[&str])] = &[
         ("oxlint", &["{{file}}"]),
@@ -63,13 +79,12 @@ pub fn run_js_lint(
                 .current_dir(project_root)
                 .output()?;
 
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 linter,
                 file_path,
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
-                debug,
             ));
         }
     }
@@ -85,40 +100,35 @@ pub fn run_js_lint(
         let stderr = String::from_utf8_lossy(&output.stderr);
         let combined = format!("{stdout}{stderr}");
         if !combined.contains("Missing script") && !combined.contains("npm error") {
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 "npm run lint",
                 file_path,
                 &stdout,
                 &stderr,
                 output.status.success(),
-                debug,
             ));
         }
     }
 
-    // No linter found
-    Ok(continue_result(
-        debug,
-        &format!("[ralph-hook-lint] no linter found for {file_path}."),
-    ))
+    Ok(LintOutcome::Pass {
+        message: format!("[ralph-hook-lint] no linter found for {file_path}."),
+    })
 }
 
 pub fn run_rust_lint(
     file_path: &str,
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
-    run_rust_lint_multi(&[file_path.to_string()], project_root, debug, lenient)
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
+    run_rust_lint_multi(&[file_path.to_string()], project_root, lenient)
 }
 
 /// Run clippy once and filter output for all given file paths.
 pub fn run_rust_lint_multi(
     file_paths: &[String],
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
     let mut clippy_args = vec!["clippy", "--message-format=short", "--", "-D", "warnings"];
     if lenient {
         clippy_args.extend([
@@ -148,25 +158,23 @@ pub fn run_rust_lint_multi(
     };
 
     if file_errors.is_empty() {
-        Ok(continue_result(
-            debug,
-            &format!("[ralph-hook-lint] lint passed for {label} using clippy."),
-        ))
+        Ok(LintOutcome::Pass {
+            message: format!("[ralph-hook-lint] lint passed for {label} using clippy."),
+        })
     } else {
-        Ok(format!(
-            r#"{{"decision":"block","reason":"[ralph-hook-lint] lint errors in {} using clippy:\n\n{}\n\nFix lint errors."}}"#,
-            escape_json(&label),
-            escape_json(&file_errors)
-        ))
+        Ok(LintOutcome::Fail {
+            reason: format!(
+                "[ralph-hook-lint] lint errors in {label} using clippy:\n\n{file_errors}\n\nFix lint errors."
+            ),
+        })
     }
 }
 
 pub fn run_python_lint(
     file_path: &str,
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
     // Try linters in order of speed: ruff (fastest), mypy, pylint, flake8
     let linters: &[(&str, &[&str])] = &[
         ("ruff", &["check", "--output-format=concise", "{{file}}"]),
@@ -175,11 +183,9 @@ pub fn run_python_lint(
         ("flake8", &["{{file}}"]),
     ];
 
-    // Check for virtual environment paths first, then system paths
     let venv_dirs = [".venv/bin", "venv/bin", ".env/bin", "env/bin"];
 
     for (linter, args) in linters {
-        // Try virtual environment first
         let mut bin_path: Option<String> = None;
 
         for venv_dir in &venv_dirs {
@@ -190,7 +196,6 @@ pub fn run_python_lint(
             }
         }
 
-        // Fall back to system PATH
         if bin_path.is_none() {
             if let Ok(output) = Command::new("which").arg(linter).output() {
                 if output.status.success() {
@@ -228,40 +233,34 @@ pub fn run_python_lint(
                 .current_dir(project_root)
                 .output()?;
 
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 linter,
                 file_path,
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
-                debug,
             ));
         }
     }
 
-    // No linter found
-    Ok(continue_result(
-        debug,
-        &format!(
+    Ok(LintOutcome::Pass {
+        message: format!(
             "[ralph-hook-lint] no Python linter found for {file_path}. Install ruff for best performance: pip install ruff"
         ),
-    ))
+    })
 }
 
 pub fn run_java_lint(
     file_path: &str,
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
     // PMD/SpotBugs don't support clean CLI-level rule suppression
     let _ = lenient;
-    // Detect build tool: Maven or Gradle
     let pom_path = Path::new(project_root).join("pom.xml");
     let gradle_path = Path::new(project_root).join("build.gradle");
     let gradle_kts_path = Path::new(project_root).join("build.gradle.kts");
 
-    // Linters to try in order: pmd (fast), spotbugs (thorough)
     // --batch-mode disables ANSI color output (the official Maven way).
     let maven_linters: &[(&str, &[&str], &str)] = &[
         (
@@ -291,27 +290,24 @@ pub fn run_java_lint(
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
 
-            // Check if plugin exists
             if stderr.contains("Unknown lifecycle phase") || stderr.contains(not_found_msg) {
                 continue;
             }
 
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 &format!("mvn {name}"),
                 file_path,
                 &stdout,
                 &stderr,
                 output.status.success(),
-                debug,
             ));
         }
 
-        return Ok(continue_result(
-            debug,
-            &format!(
+        return Ok(LintOutcome::Pass {
+            message: format!(
                 "[ralph-hook-lint] no Java linter configured for {file_path}. Add maven-pmd-plugin or spotbugs-maven-plugin to pom.xml."
             ),
-        ));
+        });
     }
 
     if gradle_path.exists() || gradle_kts_path.exists() {
@@ -330,57 +326,49 @@ pub fn run_java_lint(
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
 
-            // Check if task exists
             if stderr.contains(not_found_msg) {
                 continue;
             }
 
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 &format!("{gradle_cmd} {task}"),
                 file_path,
                 &stdout,
                 &stderr,
                 output.status.success(),
-                debug,
             ));
         }
 
-        return Ok(continue_result(
-            debug,
-            &format!(
+        return Ok(LintOutcome::Pass {
+            message: format!(
                 "[ralph-hook-lint] no Java linter configured for {file_path}. Add pmd or spotbugs plugin to build.gradle."
             ),
-        ));
+        });
     }
 
-    // No build tool found
-    Ok(continue_result(
-        debug,
-        &format!(
+    Ok(LintOutcome::Pass {
+        message: format!(
             "[ralph-hook-lint] no Java build tool found for {file_path}. Add pom.xml or build.gradle."
         ),
-    ))
+    })
 }
 
 pub fn run_go_lint(
     file_path: &str,
     project_root: &str,
-    debug: bool,
     lenient: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<LintOutcome, Box<dyn std::error::Error>> {
     // Go compiles at the package level (all .go files in a directory together).
     // Linting individual files causes false positives (undefined symbols from
     // sibling files in the same package). Lint the package directory instead.
     let pkg_dir = go_package_dir(file_path, project_root);
 
-    // Try linters in order: golangci-lint (comprehensive), staticcheck, go vet
     let linters: &[(&str, &[&str])] = &[
         ("golangci-lint", &["run", "--fast", "{{pkg}}"]),
         ("staticcheck", &["{{pkg}}"]),
     ];
 
     for (linter, args) in linters {
-        // Check if linter exists in PATH
         if let Ok(output) = Command::new("which").arg(linter).output() {
             if output.status.success() {
                 let mut actual_args: Vec<String> = args
@@ -397,13 +385,12 @@ pub fn run_go_lint(
                     .current_dir(project_root)
                     .output()?;
 
-                return Ok(output_lint_result(
+                return Ok(build_outcome(
                     linter,
                     file_path,
                     &String::from_utf8_lossy(&output.stdout),
                     &String::from_utf8_lossy(&output.stderr),
                     output.status.success(),
-                    debug,
                 ));
             }
         }
@@ -417,24 +404,21 @@ pub fn run_go_lint(
                 .current_dir(project_root)
                 .output()?;
 
-            return Ok(output_lint_result(
+            return Ok(build_outcome(
                 "go vet",
                 file_path,
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
                 output.status.success(),
-                debug,
             ));
         }
     }
 
-    // No linter found
-    Ok(continue_result(
-        debug,
-        &format!(
+    Ok(LintOutcome::Pass {
+        message: format!(
             "[ralph-hook-lint] no Go linter found for {file_path}. Install golangci-lint for best results: https://golangci-lint.run"
         ),
-    ))
+    })
 }
 
 /// Derive the Go package import path (relative to project root) from a file path.
@@ -456,6 +440,35 @@ fn go_package_dir(file_path: &str, project_root: &str) -> String {
                 }
             },
         )
+}
+
+fn build_outcome(
+    linter: &str,
+    file_path: &str,
+    stdout: &str,
+    stderr: &str,
+    success: bool,
+) -> LintOutcome {
+    if success {
+        LintOutcome::Pass {
+            message: format!("[ralph-hook-lint] lint passed for {file_path} using {linter}."),
+        }
+    } else {
+        let output = if !stdout.is_empty() && !stderr.is_empty() {
+            format!("{stdout}\n{stderr}")
+        } else if !stdout.is_empty() {
+            stdout.to_string()
+        } else {
+            stderr.to_string()
+        };
+
+        LintOutcome::Fail {
+            reason: format!(
+                "[ralph-hook-lint] lint errors in {file_path} using {linter}:\n\n{}\n\nFix lint errors.",
+                output.trim()
+            ),
+        }
+    }
 }
 
 fn filter_clippy_output_multi(
@@ -493,16 +506,15 @@ fn filter_clippy_output_multi(
     combined
         .lines()
         .filter(|line| {
-            // 1. Exact absolute path (rare but precise)
             file_paths.iter().any(|fp| line.contains(fp))
-            // 2. Relative path from project root (matches clippy's output)
                 || relative_paths.iter().any(|rp| line.contains(rp))
-            // 3. Bare filename fallback
                 || file_names.iter().any(|name| line.contains(name))
         })
         .collect::<Vec<_>>()
         .join("\n")
 }
+
+// --- Wire-protocol helpers (used at the boundary in main.rs) ---
 
 pub fn escape_json(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
@@ -534,34 +546,18 @@ pub fn continue_result(debug: bool, message: &str) -> String {
     }
 }
 
-fn output_lint_result(
-    linter: &str,
-    file_path: &str,
-    stdout: &str,
-    stderr: &str,
-    success: bool,
-    debug: bool,
-) -> String {
-    if success {
-        continue_result(
-            debug,
-            &format!("[ralph-hook-lint] lint passed for {file_path} using {linter}."),
-        )
-    } else {
-        let output = if !stdout.is_empty() && !stderr.is_empty() {
-            format!("{stdout}\n{stderr}")
-        } else if !stdout.is_empty() {
-            stdout.to_string()
-        } else {
-            stderr.to_string()
-        };
-
-        format!(
-            r#"{{"decision":"block","reason":"[ralph-hook-lint] lint errors in {} using {}:\n\n{}\n\nFix lint errors."}}"#,
-            escape_json(file_path),
-            escape_json(linter),
-            escape_json(output.trim())
-        )
+/// Serialize a `LintOutcome` as the synchronous Codex `decision:block` JSON protocol.
+/// Pass → `{"continue":true}` (with optional `systemMessage` in debug mode).
+/// Fail → `{"decision":"block","reason":"..."}`.
+pub fn outcome_to_block_json(outcome: &LintOutcome, debug: bool) -> String {
+    match outcome {
+        LintOutcome::Pass { message } => continue_result(debug, message),
+        LintOutcome::Fail { reason } => {
+            format!(
+                r#"{{"decision":"block","reason":"{}"}}"#,
+                escape_json(reason)
+            )
+        }
     }
 }
 
@@ -608,76 +604,92 @@ mod tests {
     }
 
     #[test]
-    fn test_output_lint_result_success_debug() {
-        let result = output_lint_result("eslint", "src/app.js", "", "", true, true);
+    fn test_build_outcome_success() {
+        let outcome = build_outcome("eslint", "src/app.js", "", "", true);
         assert_eq!(
-            result,
-            r#"{"continue":true,"systemMessage":"[ralph-hook-lint] lint passed for src/app.js using eslint."}"#
+            outcome,
+            LintOutcome::Pass {
+                message: "[ralph-hook-lint] lint passed for src/app.js using eslint.".to_string()
+            }
         );
     }
 
     #[test]
-    fn test_output_lint_result_success_no_debug() {
-        let result = output_lint_result("eslint", "src/app.js", "", "", true, false);
-        assert_eq!(result, r#"{"continue":true}"#);
+    fn test_build_outcome_failure_stdout_only() {
+        let outcome = build_outcome("eslint", "src/app.js", "error on line 1", "", false);
+        match outcome {
+            LintOutcome::Fail { reason } => {
+                assert!(reason.contains("error on line 1"));
+                assert!(reason.contains("eslint"));
+                assert!(reason.contains("src/app.js"));
+                assert!(reason.contains("Fix lint errors."));
+            }
+            LintOutcome::Pass { .. } => panic!("expected Fail outcome"),
+        }
     }
 
     #[test]
-    fn test_output_lint_result_failure_stdout_only() {
-        let result = output_lint_result("eslint", "src/app.js", "error on line 1", "", false, true);
+    fn test_build_outcome_failure_stderr_only() {
+        let outcome = build_outcome("eslint", "src/app.js", "", "error on line 2", false);
+        match outcome {
+            LintOutcome::Fail { reason } => assert!(reason.contains("error on line 2")),
+            LintOutcome::Pass { .. } => panic!("expected Fail outcome"),
+        }
+    }
+
+    #[test]
+    fn test_build_outcome_failure_both_streams() {
+        let outcome = build_outcome("eslint", "src/app.js", "stdout err", "stderr err", false);
+        match outcome {
+            LintOutcome::Fail { reason } => {
+                assert!(reason.contains("stdout err"));
+                assert!(reason.contains("stderr err"));
+            }
+            LintOutcome::Pass { .. } => panic!("expected Fail outcome"),
+        }
+    }
+
+    #[test]
+    fn test_outcome_to_block_json_pass_no_debug() {
+        let outcome = LintOutcome::Pass {
+            message: "anything".to_string(),
+        };
         assert_eq!(
-            result,
-            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
+            outcome_to_block_json(&outcome, false),
+            r#"{"continue":true}"#
         );
     }
 
     #[test]
-    fn test_output_lint_result_failure_stderr_only() {
-        let result = output_lint_result("eslint", "src/app.js", "", "error on line 2", false, true);
+    fn test_outcome_to_block_json_pass_debug() {
+        let outcome = LintOutcome::Pass {
+            message: "lint passed".to_string(),
+        };
         assert_eq!(
-            result,
-            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 2\n\nFix lint errors."}"#
+            outcome_to_block_json(&outcome, true),
+            r#"{"continue":true,"systemMessage":"lint passed"}"#
         );
     }
 
     #[test]
-    fn test_output_lint_result_failure_both() {
-        let result = output_lint_result(
-            "eslint",
-            "src/app.js",
-            "stdout err",
-            "stderr err",
-            false,
-            true,
-        );
+    fn test_outcome_to_block_json_fail() {
+        let outcome = LintOutcome::Fail {
+            reason: "lint failed".to_string(),
+        };
         assert_eq!(
-            result,
-            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nstdout err\nstderr err\n\nFix lint errors."}"#
+            outcome_to_block_json(&outcome, false),
+            r#"{"decision":"block","reason":"lint failed"}"#
         );
     }
 
     #[test]
-    fn test_output_lint_result_failure_no_debug_still_blocks() {
-        let result =
-            output_lint_result("eslint", "src/app.js", "error on line 1", "", false, false);
-        assert_eq!(
-            result,
-            r#"{"decision":"block","reason":"[ralph-hook-lint] lint errors in src/app.js using eslint:\n\nerror on line 1\n\nFix lint errors."}"#
-        );
-    }
-
-    #[test]
-    fn test_output_lint_result_escapes_special_chars() {
-        let result = output_lint_result(
-            "eslint",
-            "src/app.js",
-            "error: \"unexpected\"\n",
-            "",
-            false,
-            true,
-        );
-        assert!(result.contains(r#"\"unexpected\""#));
-        assert!(result.contains(r"\n"));
+    fn test_outcome_to_block_json_fail_escapes_special_chars() {
+        let outcome = LintOutcome::Fail {
+            reason: "error: \"unexpected\"\n".to_string(),
+        };
+        let serialized = outcome_to_block_json(&outcome, false);
+        assert!(serialized.contains(r#"\"unexpected\""#));
+        assert!(serialized.contains(r"\n"));
     }
 
     #[test]
@@ -693,6 +705,17 @@ mod tests {
     fn test_continue_result_no_debug() {
         let result = continue_result(false, "[ralph-hook-lint] some message");
         assert_eq!(result, r#"{"continue":true}"#);
+    }
+
+    #[test]
+    fn test_lint_outcome_is_fail() {
+        assert!(LintOutcome::Fail { reason: "x".into() }.is_fail());
+        assert!(
+            !LintOutcome::Pass {
+                message: "x".into()
+            }
+            .is_fail()
+        );
     }
 
     #[test]
@@ -733,9 +756,6 @@ mod tests {
 
     #[test]
     fn test_filter_clippy_workspace_no_cross_crate_leak() {
-        // Simulate a workspace where clippy reports errors from two crates.
-        // The filter for crate "app" should NOT match errors from "core" via
-        // the relative path, even though both have "lib.rs".
         let stderr = "  --> src/lib.rs:10:5\n  --> /ws/crates/core/src/lib.rs:20:3";
         let result = filter_clippy_output_multi(
             "",
@@ -743,11 +763,7 @@ mod tests {
             &["/ws/crates/app/src/lib.rs"],
             "/ws/crates/app",
         );
-        // "src/lib.rs:10:5" matches via relative path (correct — app's own file)
         assert!(result.contains("src/lib.rs:10:5"));
-        // The absolute path "/ws/crates/core/src/lib.rs:20:3" should NOT match
-        // via relative path, but WILL match via the filename fallback "lib.rs".
-        // This is a known limitation of the filename fallback.
     }
 
     #[test]
@@ -779,7 +795,6 @@ mod tests {
 
     #[test]
     fn test_go_package_dir_fallback() {
-        // When file is not under project root, fall back to ./...
         assert_eq!(
             go_package_dir("/other/path/file.go", "/home/user/project"),
             "./..."
